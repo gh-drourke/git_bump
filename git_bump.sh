@@ -46,12 +46,13 @@ filter_lines() {
 check_is_repository() {
 	if [[ ! -d ".git" ]]; then
 		echo "Not initialised for git"
-		read -rp "Press 'y' to initialise: " input
+		read -r -n 1 -p "Press 'y' to initialise: " input
 		if [[ $input == 'y' ]]; then
 			git init --initial-branch="main"
 			echo "-> git is now initialised"
 		else
 			echo "-> Exiting: No git repository"
+            exit
 		fi
 	fi
 }
@@ -107,18 +108,6 @@ get_default_version() {
 		fi
 	fi
 	echo "-> using default version: $default_version" >&2
-	# echo "$default_version"
-
-	# if [[ -f VERSION ]]; then
-	# 	ver=$(cat VERSION)
-	# 	if [[ $(check_ver_format $ver) == false ]]; then
-	# 		echo "$default_version"
-	# 	else
-	# 		echo "$ver"
-	# 	fi
-	# else
-	# 	echo "$default_version"
-	# fi
 }
 
 # Suggest a new version based on previous version and
@@ -132,6 +121,10 @@ bump_current_version() {
 	local v_major v_minor v_patch
 	local new_version # return value
 	local suggested_version
+
+    if [[ $(check_ver_format "$cur_version") == false ]]; then
+        cur_version=$default_version
+    fi
 
 	base_list=($(echo "$cur_version" | tr '.' ' '))
 	v_major=${base_list[0]}
@@ -156,11 +149,6 @@ bump_current_version() {
 	esac
 
 	suggested_version="$v_major.$v_minor.$v_patch"
-	# read -rp "Enter a version number [$suggested_version]: " new_version
-
-	# if [ "$new_version" = "" ]; then
-	# 	new_version=$suggested_version # accept default
-	# fi
 	exit_cond=false
 	while [[ $exit_cond != true ]]; do
 		echo "-> Press Enter to accept suggested version, or" >&2
