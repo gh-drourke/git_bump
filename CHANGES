@@ -1,6 +1,7 @@
 
 - fix: current_version has proper default for suggested_version
 - feat: get_input_choice()
+- fix: get_bump_choice
 
 Version: 0.1.2
 
