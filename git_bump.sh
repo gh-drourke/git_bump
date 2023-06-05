@@ -22,6 +22,24 @@ prompt_confirm() {
 	done
 }
 
+err_echo() {
+	echo "$1" >&2
+}
+
+exit_on_quit() {
+	err_echo "------------"
+	local var="$1"
+	# err_echo "enter () exit_on_quit: param is: $var"
+	# err_echo "...  length param is: ${#var}"
+	# for i in $(seq ${#var}); do
+	# 	err_echo "$i : ${var:$i:1}"
+	# done
+	case ${var:0:1} in
+	q) return 1 ;;
+	*) return 0 ;;
+	esac
+}
+
 remove_first_character() {
 	local input_string="${1}"
 	local substring="${input_string:1}"
@@ -52,17 +70,41 @@ check_is_repository() {
 			echo "-> git is now initialised"
 		else
 			echo "-> Exiting: No git repository"
-            exit
+			exit
 		fi
 	fi
 }
 
+show_current_branch() {
+	echo "-> current branch:    $(git rev-parse --abbrev-ref HEAD)"
+}
+
+show_commit_count() {
+	if [[ $(git_has_commits) == true ]]; then
+		count=$(git rev-list HEAD --count)
+		echo "-> has $count commits"
+	else
+		echo "-> has No commits"
+	fi
+}
 # Return true is git has commits
 git_has_commits() {
 	if [[ "$(git log --oneline 2>/dev/null | wc -l)" -eq 0 ]]; then
 		echo false
 	else
 		echo true
+	fi
+}
+
+populate_files() {
+	# if [[ ! -f VERSION ]]; then
+	# 	echo "creating file: VERSION"
+	# fi
+	# echo "$new_version" >VERSION
+
+	if [[ ! -f GIT_MSG ]]; then # TODO TAG_MSG
+		echo "creating file: GIT_MSG"
+		touch GIT_MSG
 	fi
 }
 
@@ -122,9 +164,9 @@ bump_current_version() {
 	local new_version # return value
 	local suggested_version
 
-    if [[ $(check_ver_format "$cur_version") == false ]]; then
-        cur_version=$default_version
-    fi
+	if [[ $(check_ver_format "$cur_version") == false ]]; then
+		cur_version=$default_version
+	fi
 
 	base_list=($(echo "$cur_version" | tr '.' ' '))
 	v_major=${base_list[0]}
@@ -154,7 +196,7 @@ bump_current_version() {
 		echo "-> Press Enter to accept suggested version, or" >&2
 		echo "-> ... override with a value in M.m.p format" >&2
 		read -rp "Suggested version:     [$suggested_version]: " new_version
-        echo "" >&2
+		echo "" >&2
 		if [ "$new_version" = "" ]; then
 			new_version=$suggested_version # accept default
 		fi
@@ -165,14 +207,82 @@ bump_current_version() {
 	echo "$new_version"
 }
 
+
+get_input_choice() {
+	local choices=$1
+	local msg="choices: [$choices]"
+	local valid_pattern="^[$choices]$"
+
+	while true; do
+		read -rn 1 -p "$msg" input_char
+		err_echo ""
+		if [[ $input_char =~ $valid_pattern ]]; then
+			break
+		fi
+	done
+	# err_echo "length input: ${#input_char}"
+	echo "$input_char"
+}
+
+get_commit_kind() {
+	local input_char
+	err_echo ""
+	err_echo "Specify kind of commit?"
+	err_echo "  Branch commit only [B]"
+	err_echo "  Branch and Tag commit [T]"
+	err_echo "  Quit [q]"
+	input_char=$(get_input_choice "BTq")
+	# err_echo "  --> get_commit_kind returning: $input_char"
+	echo "$input_char"
+}
+
+get_bump_choice() {
+	local cur_ver=$1
+	local msg
+	# local tag_pattern='^[Mmpq]$'
+	{
+		echo
+		echo "-> current version:    $cur_ver"
+	} >&2
+
+	# msg="Do you want to bump \(M\)ajor, \(m\)inor, \(p\)atch or \(q\)uit? [M,m,p,q] "
+
+	get_input_choice "Mnpq"
+	echo "$input_char"
+}
+
+commit_branch() {
+	echo "=> git add ."
+	git add .
+	echo "=> git commit"
+	git commit -m "$(cat GIT_MSG)"
+
+	read -rn 1 -p "Push origin? [y,n] " input
+	if [[ $input == 'y' ]]; then
+		echo "=> git push origin -- branch":
+ 		git push origin 
+	fi
+}
+
+write_changes_file() {
+    local fout
+	fout="$(mktemp)"
+	git log --pretty=medium >"$fout"
+	result=$(filter_lines "Date" "commit" "Author" "$fout")
+	# remove leading spaces (sed) and collapse multiple blank lines (cat -s)
+	echo "$result" | sed "s/^[ \t]*//" | cat -s >CHANGES
+}
+
 git_commit() {
-	local new_version=$1
+    local commit_kind=$1
+	local new_version=$2
+
 	if [[ -z "$new_version" ]]; then
 		echo "-> new_version String is empty"
 		echo "-> Aborting commit"
 		exit
 	else
-		echo "-> preceding with commit"
+		echo "-> proceeding with commit"
 	fi
 
 	OUT="$(mktemp)"
@@ -190,8 +300,10 @@ git_commit() {
 	git add .
 	echo "=> git commit"
 	git commit -m "$(cat "$OUT")"
+
+	# TODO optional execution
 	echo "=> git tag"
-	git tag -a -m "Tagging version $new_version" "v$new_version"
+	git tag -a -m "Tagging version $new_version" "v$new_version" # annotated tag
 	read -rn 1 -p "Push origin? [y,n] " input
 	if [[ $input == 'y' ]]; then
 		echo "=> git push origin --tags"
@@ -205,62 +317,39 @@ git_commit() {
 	echo "$result" | sed "s/^[ \t]*//" | cat -s >CHANGES
 }
 
-populate_files() {
-	# if [[ ! -f VERSION ]]; then
-	# 	echo "creating file: VERSION"
-	# fi
-	# echo "$new_version" >VERSION
-
-	if [[ ! -f GIT_MSG ]]; then
-		echo "creating file: GIT_MSG"
-		touch GIT_MSG
-	fi
-}
-
-show_commit_count() {
-	if [[ $(git_has_commits) == true ]]; then
-		count=$(git rev-list HEAD --count)
-		echo "-> has $count commits"
-	else
-		echo "-> has No commits"
-	fi
-}
-
-get_bump_choice() {
-	local cur_ver=$1
-	local msg
-	local valid_pattern='^[Mmpq]$'
-	echo "-> current version is: $cur_ver" >&2
-	msg="Do you want to bump M(ajor), (m)inor, (p)atch or (q)uit? [M,m,p,q] "
-	while true; do
-		read -rn 1 -p "$msg" input_char
-		# echo >&2
-		if [[ $input_char =~ $valid_pattern ]]; then
-			break
-		fi
-	done
-	echo "$input_char"
-}
 
 main() {
 	local cur_ver new_ver
 	echo "-> Current directory: $(pwd)"
 	check_is_repository
+	show_current_branch
 	show_commit_count
 	cur_ver=$(get_default_version)
+
+	populate_files
+
+	prompt_confirm "Continue commit_branch? " || exit
+    commit_branch
+    write_changes_file
+
+	commit_kind=$(get_commit_kind)
+	exit_on_quit "$commit_kind" || exit
+
+
+
 	bump_choice=$(get_bump_choice "$cur_ver")
-	test "$bump_choice" || exit
-    if [[ "$bump_choice" == 'q' ]]; then exit; fi
+	exit_on_quit "$bump_choice" || exit 1
+
 	echo "-> bump choice: $bump_choice"
 	new_ver=$(bump_current_version "$cur_ver" "$bump_choice")
 	echo "-> new version will be: $new_ver"
 	prompt_confirm "Continue? " || exit
 	echo
-	populate_files
-	git_commit "$new_ver"
 
-	# echo -e "\n----- version -----"
-	# cat VERSION
+	# git_commit "$new_ver"
+
+	# TODO empty GIT_MSG
+
 	echo -e "\n----- changes -----"
 	head -n 15 CHANGES
 	echo -e "----------"
