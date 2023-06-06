@@ -40,6 +40,19 @@ The file GIT_MSG contains content to be written to current git commit.
 
 Note: This file should be emptied after git commit to prepare for next commit.
 
+
+# Tagging
+
+Tags are maintained in a three digit format: Major.minor.patch
+
+1. Any branch commit can receive a lightweight tag.
+
+    - branch commits that have a bumped path number do not qualify for a tag commit.
+
+2. An annotated tag can be made after any branch commit.
+
+3. A 'suggested tag' is offered based on the next in a sequence.
+
 # Usage
 
 1. Download script and place on PATH.
