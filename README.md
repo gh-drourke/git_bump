@@ -1,45 +1,48 @@
-# Purpose: 
+# Purpose
 
-This script is a personal script for myself to automate the process of commits to branches and tags.
- 
-It does the following:
+This script does the following:
 
-## 1. Add all files and commit to local branch.
- 
-A list of current changes is maintained in a file called GIT_MSG. This file becomes the message content of "$ git commit -m <GIT_MSG>
+## 1. Handles staging and commits to local branch
+
+The user maintains a list of changes since the last commit in a file called GIT_MSG. This file becomes the message content to the -m option when executing "$ git commit -m <GIT_MSG>"
 
 ## 2. Handle TAG commits
 
-The current version is displayed along with a suggested version.
+After a "git commit" another "git tag" is optional.
 
-An annotated tag version is created with the suggested version tag.
+## 3. Version number control
 
-## 3. Maintain a history of git log.
+For all commits, the next version number is suggested. 
 
-An edited list of all git messages is put into a file called 'CHANGES'
+## 4. Maintain a history of git log
 
-This log is filtered by the removal lines starting with "author", "date" and "commit" 
+An list of all git messages is put into a file called 'CHANGES'
 
-# Assumptions:
+This log is filtered by the removal of lines starting with "author", "date" and "commit"
 
- 1. repository has been initialised.
+# Assumptions
 
- 2. .gitignore file has been populated.
+ ## 1. repository has been initialised.
+
+ This script will offer to initialise a repository with the trunk branch called main.
+
+ ##2. .gitignore file has been populated.
 
 # Files
 
  Works with two files (will create if not present)
- 
+
 1. CHANGES
 
-The CHANGES files contains  the most recent output from git log edited by removing author, date and commit lines
+This file is maintained by the script and is changed with every branch commit.
+
+The CHANGES files contains the output from the "git log" command and is filtered by the removal of all lines starting with "author", "date" or "commit".
 
 2. GIT_MSG:
 
-The file GIT_MSG contains content to be written to current git commit.
+The file GIT_MSG is maintained by the user and contains the content to be written to the next "git commit".
 
 Note: This file should be emptied after git commit to prepare for next commit.
-
 
 # Tagging
 
@@ -47,15 +50,17 @@ Tags are maintained in a three digit format: Major.minor.patch
 
 1. Any branch commit can receive a lightweight tag.
 
-    - branch commits that have a bumped path number do not qualify for a tag commit.
-
 2. An annotated tag can be made after any branch commit.
 
 3. A 'suggested tag' is offered based on the next in a sequence.
 
+4. Tags may not be reused.
+
+5. Tags are strictly used in triplet format: M.m.p
+
 # Usage
 
-1. Download script and place on PATH.
+1. Download the script and place on PATH.
 
 2. Change to directory of the repository being worked on.
 

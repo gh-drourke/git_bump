@@ -1,6 +1,6 @@
 #!/bin/bash
 
-default_version="0.1.0"
+default_version="0.0.0"
 
 # reg exp to test for a valid version tag
 # local regex="^v\d+\.\d+\.\d+$" # does not work
@@ -19,6 +19,32 @@ match_pattern() {
 	fi
 }
 
+match_strings() {
+	local list=("$@")              # First parameter: list of strings
+	local search_str="${list[-1]}" # Last element of the list is the search string
+	unset 'list[-1]'               # Remove the search string from the list
+	local found=false
+
+	for item in "${list[@]}"; do
+		if [[ "$item" == "$search_str" ]]; then
+			found=true
+			break
+		fi
+	done
+
+	echo "$found"
+}
+
+# return true  version already in use
+check_for_used_version() {
+	local search_str=$1
+	local result
+	list=($(git tag))
+	result=$(match_strings "${list[@]}" "$search_str")
+	# err_echo ".. check_for_used_version result: $result"
+	echo "$result"
+}
+
 prompt_confirm() {
 	# usage: prompt_confirm "message" || exit 0
 	local msg=$1
@@ -26,8 +52,8 @@ prompt_confirm() {
 	while true; do
 		read -r -n 1 -p "$msg [y/n]: " reply
 		case $reply in
-		[yY]) return 0 ;;
-		[nN]) return 1 ;;
+		[yY]) return 0 ;; # true
+		[nN]) return 1 ;; # false
 		*) printf " \033[31m %s \n\033[0m" "invalid input" ;;
 		esac
 	done
@@ -35,7 +61,8 @@ prompt_confirm() {
 
 # return single letter choice
 get_input_choice() {
-	# param $1: list of single letter choices
+	# param $1: string of single letter choices
+	local rv
 	local choices=$1
 	local msg="choices: [$choices]"
 	local valid_pattern="^[$choices]$"
@@ -48,21 +75,18 @@ get_input_choice() {
 		fi
 	done
 	# err_echo "length input: ${#input_char}"
-	echo "${input_char:0:1}"
+	rv="${input_char:0:1}"
+	# err_echo "----> get input choice returning: $rv"
+	echo "$rv"
 }
 
 err_echo() {
 	echo "$1" >&2
 }
 
+# Test input character for 'q'
 exit_on_quit() {
-	# err_echo "------------"
 	local var="$1"
-	# err_echo "enter () exit_on_quit: param is: $var"
-	# err_echo "...  length param is: ${#var}"
-	# for i in $(seq ${#var}); do
-	# 	err_echo "$i : ${var:$i:1}"
-	# done
 	case ${var:0:1} in
 	q) return 1 ;;
 	*) return 0 ;;
@@ -75,6 +99,7 @@ remove_first_character() {
 	echo "${substring}"
 }
 
+# filter out all lines matching list of keywords
 filter_lines() {
 	local keywords=("$@")
 	local file="${keywords[-1]}"
@@ -90,10 +115,12 @@ filter_lines() {
 }
 
 # Check for existence of .git repository.
+# If respoitory not present, offer to initialise one.
 check_is_repository() {
 	if [[ ! -d ".git" ]]; then
 		echo "Not initialised for git"
 		read -r -n 1 -p "Press 'y' to initialise: " input
+		echo
 		if [[ $input == 'y' ]]; then
 			git init --initial-branch="main"
 			echo "-> git is now initialised"
@@ -105,23 +132,25 @@ check_is_repository() {
 }
 
 show_current_branch() {
-	echo "-> current branch:    $(git rev-parse --abbrev-ref HEAD)"
+	# echo "-> current branch:    $(git rev-parse --abbrev-ref HEAD)"
+	echo "-> current branch:    $(git branch --show-current)"
 }
 
-show_commit_count() {
-	if [[ $(git_has_commits) == true ]]; then
-		count=$(git rev-list HEAD --count)
-		echo "-> has $count commits"
-	else
-		echo "-> has No commits"
-	fi
-}
 # Return true is git has commits
 git_has_commits() {
 	if [[ "$(git log --oneline 2>/dev/null | wc -l)" -eq 0 ]]; then
 		echo false
 	else
 		echo true
+	fi
+}
+
+show_commit_count() {
+	if [[ $(git_has_commits) == true ]]; then
+		count=$(git rev-list HEAD --count)
+		echo "-> number of commits: $count"
+	else
+		echo "-> number of commits: 0"
 	fi
 }
 
@@ -142,9 +171,9 @@ handle_error() {
 	# Additional error handling logic can be added here
 }
 
-# Get the latest version tag
 NO_TAGS="<no tags>"
 
+# Get the latest version tag
 git_latest_tag() {
 	local latest_tag
 
@@ -156,8 +185,10 @@ git_latest_tag() {
 	echo "$latest_tag"
 }
 
+# return true if has valid format
 check_ver_format() {
 	local ver=$1
+	# err_echo "check_ver_format of: $ver"
 	if [[ $ver =~ $regex ]]; then
 		echo "true"
 	else
@@ -176,6 +207,7 @@ check_tag_format() {
 
 # Get default version from previous commit.
 # If no previous commits, then use default.
+# return the latest tag used.
 get_default_version() {
 	# params: none
 	local latest_tag=""
@@ -191,23 +223,41 @@ get_default_version() {
 			latest_tag=$(remove_first_character "$latest_tag")
 		else
 			err_echo "-> ERROR: bad tag format"
+			err_echo "-> Reverting to default tag"
 			latest_tag=default_version
 		fi
 	fi
 	echo "$latest_tag"
 }
 
+# return single letter bump choice
+get_bump_choice() {
+	# params: None
+	local msg
+	local result
+	err_echo
+	err_echo "Bump next version by:"
+	err_echo "  Major        [M]"
+	err_echo "  minor        [m]"
+	err_echo "  patch        [p]"
+	err_echo "  <no version> [n]"
+	err_echo "  quit         [q]"
+	result=$(get_input_choice "Mmpnq")
+    echo "$result"
+}
+
+# return a suggested version tag based on the last one used
 get_suggested_bump() {
 	local cur_version=$1
 	local bump_type=$2
 	local v_major v_minor v_patch
 	local new_version # return value
 	local suggested_version
-	if [[ $(check_ver_format "$cur_version") == false ]]; then
-		err_echo "Version found has incorrect format"
-		err_echo "Correction to default version: $default_version"
-		cur_version=$default_version
-	fi
+	# if [[ $(check_ver_format "$cur_version") == false ]]; then
+	# 	err_echo "Version found has incorrect format"
+	# 	err_echo "Correcting to default version: $default_version"
+	# 	cur_version=$default_version
+	# fi
 
 	base_list=($(echo "$cur_version" | tr '.' ' '))
 	v_major=${base_list[0]}
@@ -238,15 +288,14 @@ get_suggested_bump() {
 
 # Suggest a new version based on previous version and
 # choice from M, m, p prompt.
+# return wanted version number in M.m.p format
 bump_current_version() {
 	# param $1: version to bump
 	# param $2: bump_code -- Major, minor, patch
-	# return wanted version number in M.m.p format
 	local cur_version=$1
 	local bump_code=$2
-	local new_version # return value
 	local suggested_version
-	# err_echo "enter bump_current_version: ver=$cur_version  bump_code=$bump_code"
+	local new_version # return value
 
 	if [[ $cur_version == "$NO_TAGS" ]]; then
 		cur_version=$default_version
@@ -261,7 +310,7 @@ bump_current_version() {
 		# err_echo "returned value for suggested version: $suggested_version"
 		err_echo ""
 		err_echo "-> Press Enter to accept suggested version, or"
-		err_echo "-> ... override with a value in M.m.p format"
+		err_echo "-> Over-ride with a value in M.m.p format"
 		err_echo ""
 		exit_cond=false
 		while [[ $exit_cond != true ]]; do
@@ -274,51 +323,17 @@ bump_current_version() {
 				exit_cond=true
 			fi
 		done
+
 		echo "$new_version"
 	fi
 }
 
-# return single letter bump choice
-get_bump_choice() {
-	local cur_ver=$1
-	local msg
-	local result
-	# local tag_pattern='^[Mmpq]$'
-	err_echo
-	if [[ $cur_ver == "$NO_TAGS" ]]; then
-		err_echo "-> There are no tagged version"
-		err_echo "-> The first default tag is: $default_version"
-	else
-		err_echo "-> current version:    $cur_ver"
-	fi
-	err_echo "Choose next version as:"
-	err_echo "  Major        [M]"
-	err_echo "  minor        [m]"
-	err_echo "  patch        [p]"
-	err_echo "  <no version> [n]"
-	err_echo "  quit [q]"
-	result=$(get_input_choice "Mmpnq")
-	echo "${result:0:1}"
-}
-
-get_commit_kind() {
-	local input_char
-	err_echo ""
-	err_echo "Specify kind of commit?"
-	err_echo "  Branch commit only [B]"
-	err_echo "  Branch and Tag commit [T]"
-	err_echo "  Quit [q]"
-	input_char=$(get_input_choice "BTq")
-	# err_echo "  --> get_commit_kind returning: $input_char"
-	echo "$input_char"
-}
-
-# return git message
+# return git message based on contents of file: GIT_MSG
 form_git_message() {
 	# param $1: new version
 	local version=$1
-	local fout
-	local lines
+	local fout  # temp file
+	local lines # return value
 	fout=$(mktemp)
 	# err_echo "enter form_git_message with version: $version"
 
@@ -332,30 +347,48 @@ form_git_message() {
 	echo "$title" >"$fout"
 	echo "" >>"$fout"
 	cat GIT_MSG >>"$fout"
-	# cat -s "$fout" >&2
+
 	while IFS= read -r line; do
 		lines+=("$line")
 	done <"$fout"
 
 	for line in "${lines[@]}"; do
-		echo "$line"
+		echo "$line" # return list of lines
 	done
+}
+
+mark_git_msg_file() {
+	echo "--- Contents above this line have been committed" >>GIT_MSG
+}
+
+confirm_valid_version() {
+	# param $1: version to check
+	local tag=$1
+	local result=true
+
+	if [[ $(check_for_used_version v"$tag") == true ]]; then
+		result=false
+		err_echo "This version tag $tag has already been used."
+	fi
+
+	if [[ $(check_ver_format "$tag") == false ]]; then
+		result=false
+		err_echo "Improperly formatted version: $tag"
+	fi
+	echo "$result"
 }
 
 # Clean the current branch and commit it with message from GIT_MSG
 commit_branch() {
+	# param $1: version to commit
 	local version=$1
 	echo "=> git add ."
 	git add .
 	echo "=> git commit"
 	result=$(form_git_message "$version") # result is an array of strings
-	# echo "--- file ---"
-	# echo -e "$result"
-	# echo "--- file ---"
-	# prompt_confirm "Continue commit_branch? " || exit
-
 	git commit -m "$result"
-	git tag "v${version}"
+	git tag "v${version}" # TODO: tag only if valid version
+	mark_git_msg_file
 
 	err_echo ""
 	read -rn 1 -p "Push origin? [y,n] " input
@@ -365,6 +398,8 @@ commit_branch() {
 	fi
 }
 
+# Populate the CHANGES file based on output from "git log"
+# Note: This is done after a commit so this operation creates an 'unstaged' file.
 write_changes_file() {
 	local fout
 	fout="$(mktemp)"
@@ -374,6 +409,7 @@ write_changes_file() {
 	echo "$result" | sed "s/^[ \t]*//" | cat -s >CHANGES
 }
 
+# Do a tag commit
 commit_tag() {
 	local new_version=$1
 
@@ -384,6 +420,8 @@ commit_tag() {
 	else
 		echo "-> proceeding with commit"
 	fi
+
+	# TODO: test version for proper format
 
 	echo "=> git tag"
 	# git tag -a -m "Tagging version $new_version" "v$new_version" # annotated tag
@@ -396,20 +434,26 @@ commit_tag() {
 
 main() {
 	local cur_ver new_ver
-	echo "-> Current directory: $(pwd)"
+	populate_files
+	echo "-> current directory: $(pwd)"
 	check_is_repository
 	show_current_branch
 	show_commit_count
-	cur_ver=$(get_default_version)
-	echo "-> current version: $cur_ver"
-	populate_files
 
-	bump_choice=$(get_bump_choice "$cur_ver")
-	exit_on_quit "$bump_choice" || exit 1
-	# echo "-> bump choice: $bump_choice"
+	cur_ver=$(get_default_version)
+	echo "-> current version:   $cur_ver"
+
+	bump_choice=$(get_bump_choice)
+	err_echo "---- >bump choice returning: $bump_choice"
+	exit_on_quit "$bump_choice" ||  exit 1
 
 	new_ver=$(bump_current_version "$cur_ver" "$bump_choice")
 	echo "-> new version will be: $new_ver"
+
+	if [[ $(confirm_valid_version "$new_ver") == false ]]; then
+		echo "error: can not use this version. exiting"
+		exit
+	fi
 
 	prompt_confirm "Continue commit_branch? " || exit
 	commit_branch "$new_ver"
@@ -419,16 +463,10 @@ main() {
 	prompt_confirm "Continue commit tag? " || exit
 	commit_tag "$new_ver"
 	echo
-
-	# echo -e "\n----- changes -----"
-	# head -n 15 CHANGES
-	# echo -e "----------"
 }
 
 main
 
-# match_pattern "fatal:" "^fatal:"
-#
-# result=$(git_latest_tag)
-# echo "result is: $result"
-# echo "---"
+# bump_choice=$(get_bump_choice)
+# err_echo "---- >bump choice returning:|${bump_choice}|"
+

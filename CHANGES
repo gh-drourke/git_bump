@@ -1,27 +1,22 @@
 
-version: 0.1.6
+version: 0.0.2
 
-- docs: README.md has be updated
+- docs: updated README.md
 
-- fix: Corrected get_latest_tag() to handle case of 0 tags
+- fix: Newly created repository was showing an error when showing name of current branch.
 
-- refactor: different handling for get_bump_choice
+version: 0.0.1
 
-- docs: README.md has be updated
+- docs: updated README.md
 
-- fix: current_version now has proper default for suggested_version
+- fix: Newly created repository was showing and error when showing name of current branch.
 
-- feat: get_input_choice()
+no version
 
-- fix: get_bump_choice
+- docs: updated README.md
 
-Version: 0.1.2
+- fix: New created repositry was showing and error when showing name of current branch.
 
-- fix: current_version has proper default for suggested_version
+version: 0.0.1
 
-Version: 0.1.1
-
-- spelling errors in README
-
-Version: 0.1.0
-
+- docs: updated README.md
