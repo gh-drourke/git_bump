@@ -1,7 +1,1 @@
-- docs: README.md has be updated
-
-- refactor: git commit and git tag have been separated into their own procedures
-
-- fix: Corrected get_latest_tag() to handle case of 0 tags
-
-- refactor: different handling for get_bump_choice
+- deleted files: .git_sh and fout

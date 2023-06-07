@@ -1,7 +1,0 @@
-0000000000000000000000000000000000000000 892a853d9526fe8b58a29fba8a743bcc724d02f9 David Rourke <drourke82@gmail.com> 1685807033 -0700	commit (initial): Version: 0.1.0
-892a853d9526fe8b58a29fba8a743bcc724d02f9 892a853d9526fe8b58a29fba8a743bcc724d02f9 David Rourke <drourke82@gmail.com> 1685807135 -0700	Branch: renamed refs/heads/main to refs/heads/main
-892a853d9526fe8b58a29fba8a743bcc724d02f9 a858fac0477f4add1fc180668ebe609b92aba811 David Rourke <drourke82@gmail.com> 1685809479 -0700	commit: Version: 0.1.1
-a858fac0477f4add1fc180668ebe609b92aba811 48d540d77628e5d19c01ed63b87bde167fc6ab49 David Rourke <drourke82@gmail.com> 1685822922 -0700	commit: Version: 0.1.2
-48d540d77628e5d19c01ed63b87bde167fc6ab49 2cfdd993b9cb514bb63d39f5b9a09a791909d5d6 David Rourke <drourke82@gmail.com> 1685993336 -0700	commit: - fix: current_version has proper default for suggested_version
-2cfdd993b9cb514bb63d39f5b9a09a791909d5d6 8e4ab1b1b516e4584d284c25fdaf6f6029c93f16 David Rourke <drourke82@gmail.com> 1686005662 -0700	commit (amend): - fix: current_version now has proper default for suggested_version
-8e4ab1b1b516e4584d284c25fdaf6f6029c93f16 8b8053b0603f847ade1138a7eb673ad4a13b2a72 David Rourke <drourke82@gmail.com> 1686005862 -0700	commit: - docs: README.md has be updated
