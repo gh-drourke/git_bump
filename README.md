@@ -42,7 +42,11 @@ The CHANGES files contains the output from the "git log" command and is filtered
 
 The file GIT_MSG is maintained by the user and contains the content to be written to the next "git commit".
 
-Note: This file should be emptied after git commit to prepare for next commit.
+This file should be emptied after git commit to prepare for next commit.
+
+This file receives a marker at the end to indicate what part appears in the git log.
+
+All content above this line should be deleted before the next branch commit.
 
 # Tagging
 
@@ -51,6 +55,8 @@ Tags are maintained in a three digit format: Major.minor.patch
 1. Any branch commit can receive a lightweight tag.
 
 2. An annotated tag can be made after any branch commit.
+
+(to implement: only if it has a version number that corresponds to a local tag commit.)
 
 3. A 'suggested tag' is offered based on the next in a sequence.
 

@@ -19,7 +19,7 @@ match_pattern() {
 	fi
 }
 
-match_strings() {
+match_str() {
 	local list=("$@")              # First parameter: list of strings
 	local search_str="${list[-1]}" # Last element of the list is the search string
 	unset 'list[-1]'               # Remove the search string from the list
@@ -40,7 +40,7 @@ check_for_used_version() {
 	local search_str=$1
 	local result
 	list=($(git tag))
-	result=$(match_strings "${list[@]}" "$search_str")
+	result=$(match_str "${list[@]}" "$search_str")
 	# err_echo ".. check_for_used_version result: $result"
 	echo "$result"
 }
@@ -59,24 +59,21 @@ prompt_confirm() {
 	done
 }
 
-# return single letter choice
+# return value: single letter choice
 get_input_choice() {
-	# param $1: string of single letter choices
-	local rv
-	local choices=$1
-	local msg="choices: [$choices]"
+	local choices=$1 # string of single letter choices
+	local rv         # return value
+	local msg="choices: [$choices] "
 	local valid_pattern="^[$choices]$"
 
 	while true; do
-		read -rn 1 -p "$msg" input_char
+		read -rn 1 -p "$msg " input_char
 		err_echo ""
-		if [[ $input_char =~ $valid_pattern ]]; then
+		if [[ $(match_pattern "$valid_pattern" "$input_char") == true ]]; then
 			break
 		fi
 	done
-	# err_echo "length input: ${#input_char}"
 	rv="${input_char:0:1}"
-	# err_echo "----> get input choice returning: $rv"
 	echo "$rv"
 }
 
@@ -101,9 +98,9 @@ remove_first_character() {
 
 # filter out all lines matching list of keywords
 filter_lines() {
-	local keywords=("$@")
-	local file="${keywords[-1]}"
-	local filtered_lines
+	local keywords=("$@")               # list of keywords
+	local file="${keywords[-1]}"        # file to process
+	local filtered_lines                # return values
 	unset 'keywords[${#keywords[@]}-1]' # Remove the last element (file name)
 
 	pattern=$(
@@ -117,15 +114,17 @@ filter_lines() {
 # Check for existence of .git repository.
 # If respoitory not present, offer to initialise one.
 check_is_repository() {
+	# params: None
+	# return value: None
 	if [[ ! -d ".git" ]]; then
-		echo "Not initialised for git"
+		echo "Git respoitory Not initialised"
 		read -r -n 1 -p "Press 'y' to initialise: " input
 		echo
 		if [[ $input == 'y' ]]; then
 			git init --initial-branch="main"
-			echo "-> git is now initialised"
+			echo "-> git repository is now initialised"
 		else
-			echo "-> Exiting: No git repository"
+			echo "-> Exiting: Git repository is Not initializlised"
 			exit
 		fi
 	fi
@@ -155,12 +154,7 @@ show_commit_count() {
 }
 
 populate_files() {
-	# if [[ ! -f VERSION ]]; then
-	# 	echo "creating file: VERSION"
-	# fi
-	# echo "$new_version" >VERSION
-
-	if [[ ! -f GIT_MSG ]]; then # TODO TAG_MSG
+	if [[ ! -f GIT_MSG ]]; then
 		echo "creating file: GIT_MSG"
 		touch GIT_MSG
 	fi
@@ -168,24 +162,15 @@ populate_files() {
 
 handle_error() {
 	echo "A trap error occurred!"
-	# Additional error handling logic can be added here
 }
 
-NO_TAGS="<no tags>"
+NO_TAGS="<no tags>" # TODO - remove
+# null version is a valid version format but indicates
+# no version present in the repository.
+NULL_VERSION="0.0.0"
+NULL_TAG="v$NULL_VERSION"
 
-# Get the latest version tag
-git_latest_tag() {
-	local latest_tag
-
-	if [[ $(git tag | wc -l) == 0 ]]; then
-		latest_tag=$NO_TAGS
-	else
-		latest_tag=$(git describe --tags --abbrev=0)
-	fi
-	echo "$latest_tag"
-}
-
-# return true if has valid format
+# return true if 'version has valid format
 check_ver_format() {
 	local ver=$1
 	# err_echo "check_ver_format of: $ver"
@@ -196,6 +181,7 @@ check_ver_format() {
 	fi
 }
 
+# return true if tag format conforms to:  v<digits>.<digits>.<digits>
 check_tag_format() {
 	local tag=$1
 	if [[ $tag =~ $regexV ]]; then
@@ -205,36 +191,47 @@ check_tag_format() {
 	fi
 }
 
-# Get default version from previous commit.
-# If no previous commits, then use default.
-# return the latest tag used.
-get_default_version() {
-	# params: none
-	local latest_tag=""
+# Get the latest tag
+# example tag: "v0.1.8"
+get_latest_tag() {
+	# params: None
+	local latest_tag # return value
 
-	if [[ $(git_has_commits) == true ]]; then
-		latest_tag=$(git_latest_tag)
-		# err_echo "-> latest tag compare:        $latest_tag"
-		if [[ $latest_tag == "$NO_TAGS" ]]; then
-			latest_tag=$NO_TAGS
-		elif
-			[[ $(check_tag_format "$latest_tag") == true ]]
-		then
-			latest_tag=$(remove_first_character "$latest_tag")
-		else
-			err_echo "-> ERROR: bad tag format"
-			err_echo "-> Reverting to default tag"
-			latest_tag=default_version
-		fi
+	if [[ $(git_has_commits) == false ]]; then
+		latest_tag=$NULL_TAG
+	elif [[ $(git tag | wc -l) == 0 ]]; then
+		latest_tag="$NULL_TAG"
+	else
+		latest_tag=$(git describe --tags --abbrev=0)
 	fi
 	echo "$latest_tag"
 }
 
+# Get default version from previous commit.
+# If no previous commits, then use default.
+# return the latest tag used.
+# params: none
+get_default_version() {
+	# No params
+	local default_ver # return value
+
+	latest_tag="$(get_latest_tag)"
+
+	if [[ $(check_tag_format "$latest_tag") == true ]]; then
+		default_ver=$(remove_first_character "$latest_tag")
+	else
+		err_echo "-> ERROR: bad tag format"
+		err_echo "-> Reverting to NULL tag"
+		default_ver=$NULL_VERSION
+	fi
+	echo "$default_ver"
+}
+
 # return single letter bump choice
 get_bump_choice() {
-	# params: None
+	# No params
+	local result # return value
 	local msg
-	local result
 	err_echo
 	err_echo "Bump next version by:"
 	err_echo "  Major        [M]"
@@ -243,7 +240,7 @@ get_bump_choice() {
 	err_echo "  <no version> [n]"
 	err_echo "  quit         [q]"
 	result=$(get_input_choice "Mmpnq")
-    echo "$result"
+	echo "$result"
 }
 
 # return a suggested version tag based on the last one used
@@ -253,11 +250,6 @@ get_suggested_bump() {
 	local v_major v_minor v_patch
 	local new_version # return value
 	local suggested_version
-	# if [[ $(check_ver_format "$cur_version") == false ]]; then
-	# 	err_echo "Version found has incorrect format"
-	# 	err_echo "Correcting to default version: $default_version"
-	# 	cur_version=$default_version
-	# fi
 
 	base_list=($(echo "$cur_version" | tr '.' ' '))
 	v_major=${base_list[0]}
@@ -292,15 +284,11 @@ get_suggested_bump() {
 bump_current_version() {
 	# param $1: version to bump
 	# param $2: bump_code -- Major, minor, patch
+	local new_version # return value
+
 	local cur_version=$1
 	local bump_code=$2
 	local suggested_version
-	local new_version # return value
-
-	if [[ $cur_version == "$NO_TAGS" ]]; then
-		cur_version=$default_version
-		err_echo "-> setting to default version: $cur_version"
-	fi
 
 	if [[ $bump_code == 'n' ]]; then
 		err_echo "Not using a version number for this branch commit"
@@ -329,13 +317,13 @@ bump_current_version() {
 }
 
 # return git message based on contents of file: GIT_MSG
-form_git_message() {
+create_git_message() {
 	# param $1: new version
 	local version=$1
 	local fout  # temp file
 	local lines # return value
 	fout=$(mktemp)
-	# err_echo "enter form_git_message with version: $version"
+	# err_echo "enter create_git_message with version: $version"
 
 	if [[ $(check_ver_format "$version") == false ]]; then
 		title="no version"
@@ -378,6 +366,21 @@ confirm_valid_version() {
 	echo "$result"
 }
 
+# Populate the CHANGES file based on output from "git log"
+# Note: This is done after a commit so this operation creates an 'unstaged' file.
+write_changes_file() {
+	# No params
+	# No return value.
+	# Side effect: writes to CHANGES file
+	local result
+	local fout
+	fout="$(mktemp)"
+	git log --pretty=medium >"$fout"
+	result=$(filter_lines "Date" "commit" "Author" "$fout")
+	# remove leading spaces (sed) and collapse multiple blank lines (cat -s)
+	echo "$result" | sed "s/^[ \t]*//" | cat -s >CHANGES
+}
+
 # Clean the current branch and commit it with message from GIT_MSG
 commit_branch() {
 	# param $1: version to commit
@@ -385,10 +388,10 @@ commit_branch() {
 	echo "=> git add ."
 	git add .
 	echo "=> git commit"
-	result=$(form_git_message "$version") # result is an array of strings
+	result=$(create_git_message "$version") # result is an array of strings
 	git commit -m "$result"
-	git tag "v${version}" # TODO: tag only if valid version
 	mark_git_msg_file
+	git tag "v${version}" # TODO: tag only if valid version
 
 	err_echo ""
 	read -rn 1 -p "Push origin? [y,n] " input
@@ -396,17 +399,6 @@ commit_branch() {
 		echo "=> git push origin -- branch":
 		git push origin
 	fi
-}
-
-# Populate the CHANGES file based on output from "git log"
-# Note: This is done after a commit so this operation creates an 'unstaged' file.
-write_changes_file() {
-	local fout
-	fout="$(mktemp)"
-	git log --pretty=medium >"$fout"
-	result=$(filter_lines "Date" "commit" "Author" "$fout")
-	# remove leading spaces (sed) and collapse multiple blank lines (cat -s)
-	echo "$result" | sed "s/^[ \t]*//" | cat -s >CHANGES
 }
 
 # Do a tag commit
@@ -444,8 +436,8 @@ main() {
 	echo "-> current version:   $cur_ver"
 
 	bump_choice=$(get_bump_choice)
-	err_echo "---- >bump choice returning: $bump_choice"
-	exit_on_quit "$bump_choice" ||  exit 1
+	# err_echo "---- >bump choice returning: $bump_choice"
+	exit_on_quit "$bump_choice" || exit 1
 
 	new_ver=$(bump_current_version "$cur_ver" "$bump_choice")
 	echo "-> new version will be: $new_ver"
@@ -461,12 +453,9 @@ main() {
 
 	echo ""
 	prompt_confirm "Continue commit tag? " || exit
-	commit_tag "$new_ver"
+	commit_tag "$new_ver"  # TODO: check for un-tagged commit
 	echo
 }
 
 main
-
-# bump_choice=$(get_bump_choice)
-# err_echo "---- >bump choice returning:|${bump_choice}|"
 

@@ -1,9 +1,3 @@
-- chore: deleted files: .git_sh and fout (mistakenly committed)
+- refactor: cleaned up a lot of code
 
-- docs: updated README.md
-
-- fix: Newly created repository was showing an error when showing name of current branch.
-
-- feat: After a commit, GIT_MSG gets a line at the end informing that contents above line have been committed.
-
-- feat: new version triplet is compared against previous used ones to circumvent duplication.
+- feat: introduced notion of NULL_TAG and NULL_VERSION

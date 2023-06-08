@@ -1,22 +1,39 @@
 
-version: 0.0.2
+version: 0.1.8
 
 - docs: updated README.md
 
 - fix: Newly created repository was showing an error when showing name of current branch.
 
-version: 0.0.1
+- feat: new version triplet is compared against previous used ones to circumvent duplication.
 
-- docs: updated README.md
+version: 0.1.7
 
-- fix: Newly created repository was showing and error when showing name of current branch.
+- deleted files: .git_sh and fout
 
-no version
+version: 0.1.6
 
-- docs: updated README.md
+- docs: README.md has be updated
 
-- fix: New created repositry was showing and error when showing name of current branch.
+- fix: Corrected get_latest_tag() to handle case of 0 tags
 
-version: 0.0.1
+- refactor: different handling for get_bump_choice
 
-- docs: updated README.md
+- docs: README.md has be updated
+
+- fix: current_version now has proper default for suggested_version
+
+- feat: get_input_choice()
+
+- fix: get_bump_choice
+
+Version: 0.1.2
+
+- fix: current_version has proper default for suggested_version
+
+Version: 0.1.1
+
+- spelling errors in README
+
+Version: 0.1.0
+
