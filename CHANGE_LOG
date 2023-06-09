@@ -1,23 +1,5 @@
 
-version: ( no version tag )
-
-- chore: CHANGES file renamed to CHANGE_LOG
-
-- fix: a bump specifying "no version" is now properly processed
-
-version: - unversioned -
-
-- chore: CHANGES file renamed to CHANGE_LOG
-
-- fix: a bump specifying "no version" is now properly processed
-
-version: - unversioned -
-
-- chore: CHANGES file renamed to CHANGE_LOG
-
-- fix: a bump specifying "no version" is now properly processed
-
-no version
+version: 0.1.10
 
 - chore: CHANGES file renamed to CHANGE_LOG
 

@@ -14,25 +14,29 @@ After a "git commit" another "git tag" is optional.
 
 For all commits, the next version number is suggested. 
 
+It is also possible to commit without a version tag.
+
 ## 4. Maintain a history of git log
 
-An list of all git messages is put into a file called 'CHANGES'
+An list of all git messages is put into a file called 'CHANGE_LOg'
 
 This log is filtered by the removal of lines starting with "author", "date" and "commit"
 
+It is updated with each commit.
+
 # Assumptions
 
- ## 1. repository has been initialised.
+ ## 1. A git repository has been initialised.
 
  This script will offer to initialise a repository with the trunk branch called main.
 
- ##2. .gitignore file has been populated.
+ ## 2. A .gitignore file has been populated.
 
 # Files
 
  Works with two files (will create if not present)
 
-1. CHANGES
+1. CHANGE_LOG
 
 This file is maintained by the script and is changed with every branch commit.
 
@@ -44,7 +48,7 @@ The file GIT_MSG is maintained by the user and contains the content to be writte
 
 This file should be emptied after git commit to prepare for next commit.
 
-This file receives a marker at the end to indicate what part appears in the git log.
+This file is updated with a marker with each commit at the end to indicate what part appears in the git log.
 
 All content above this line should be deleted before the next branch commit.
 
@@ -58,7 +62,7 @@ Tags are maintained in a three digit format: Major.minor.patch
 
 (to implement: only if it has a version number that corresponds to a local tag commit.)
 
-3. A 'suggested tag' is offered based on the next in a sequence.
+3. A 'suggested tag' is offered based on the latest tag in a sequence.
 
 4. Tags may not be reused.
 

@@ -348,7 +348,8 @@ create_git_message() {
 }
 
 mark_git_msg_file() {
-	echo "--- Contents above this line have been committed" >>GIT_MSG
+    local ver=$1    # param $1. version just commited
+	echo "--- Contents above this line were committed in version: $ver ---" >>GIT_MSG
 }
 
 confirm_valid_version() {
@@ -396,7 +397,7 @@ commit_branch() {
 	echo "=> git commit"
 	result=$(create_git_message "$version") # result is an array of strings
 	git commit -m "$result"
-	mark_git_msg_file
+	mark_git_msg_file "$version"
 	if [[ $version != "$unversioned_text" ]]; then
 		git tag "v${version}"
 	fi
