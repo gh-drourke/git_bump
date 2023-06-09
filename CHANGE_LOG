@@ -1,4 +1,34 @@
 
+version: ( no version tag )
+
+- chore: CHANGES file renamed to CHANGE_LOG
+
+- fix: a bump specifying "no version" is now properly processed
+
+version: - unversioned -
+
+- chore: CHANGES file renamed to CHANGE_LOG
+
+- fix: a bump specifying "no version" is now properly processed
+
+version: - unversioned -
+
+- chore: CHANGES file renamed to CHANGE_LOG
+
+- fix: a bump specifying "no version" is now properly processed
+
+no version
+
+- chore: CHANGES file renamed to CHANGE_LOG
+
+- fix: a bump specifying "no version" is now properly processed
+
+version: 0.1.9
+
+- refactor: cleaned up a lot of code
+
+- feat: introduced notion of NULL_TAG and NULL_VERSION
+
 version: 0.1.8
 
 - docs: updated README.md

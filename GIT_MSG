@@ -1,3 +1,3 @@
-- refactor: cleaned up a lot of code
+- chore: CHANGES file renamed to CHANGE_LOG
 
-- feat: introduced notion of NULL_TAG and NULL_VERSION
+- fix: a bump specifying "no version" is now properly processed

@@ -1,12 +1,12 @@
 #!/bin/bash
 
-default_version="0.0.0"
-
 # reg exp to test for a valid version tag
-# local regex="^v\d+\.\d+\.\d+$" # does not work
+# local re_ver="^v\d+\.\d+\.\d+$" # does not work
 
-regexV="^v[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$"
-regex="^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$"
+# Globals
+re_tag="^v[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$"
+re_ver="^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$"
+unversioned_text="( no version tag )"
 
 match_pattern() {
 	input_str="$1"
@@ -174,7 +174,7 @@ NULL_TAG="v$NULL_VERSION"
 check_ver_format() {
 	local ver=$1
 	# err_echo "check_ver_format of: $ver"
-	if [[ $ver =~ $regex ]]; then
+	if [[ $ver =~ $re_ver ]]; then
 		echo "true"
 	else
 		echo "false"
@@ -184,7 +184,7 @@ check_ver_format() {
 # return true if tag format conforms to:  v<digits>.<digits>.<digits>
 check_tag_format() {
 	local tag=$1
-	if [[ $tag =~ $regexV ]]; then
+	if [[ $tag =~ $re_tag ]]; then
 		echo true
 	else
 		echo false
@@ -233,7 +233,7 @@ get_bump_choice() {
 	local result # return value
 	local msg
 	err_echo
-	err_echo "Bump next version by:"
+	err_echo "Next version bump kind:"
 	err_echo "  Major        [M]"
 	err_echo "  minor        [m]"
 	err_echo "  patch        [p]"
@@ -283,7 +283,7 @@ get_suggested_bump() {
 # return wanted version number in M.m.p format
 bump_current_version() {
 	# param $1: version to bump
-	# param $2: bump_code -- Major, minor, patch
+	# param $2: bump_code -- Major, minor, patch, none
 	local new_version # return value
 
 	local cur_version=$1
@@ -291,8 +291,8 @@ bump_current_version() {
 	local suggested_version
 
 	if [[ $bump_code == 'n' ]]; then
-		err_echo "Not using a version number for this branch commit"
-		echo ""
+		# err_echo "Not using a version number for this branch commit"
+		echo "$unversioned_text"
 	else
 		suggested_version=$(get_suggested_bump "$cur_version" "$bump_code")
 		# err_echo "returned value for suggested version: $suggested_version"
@@ -325,11 +325,13 @@ create_git_message() {
 	fout=$(mktemp)
 	# err_echo "enter create_git_message with version: $version"
 
-	if [[ $(check_ver_format "$version") == false ]]; then
-		title="no version"
-	else
-		title="version: ${version}"
-	fi
+	# if [[ $(check_ver_format "$version") == false ]]; then
+	# 	title="no version"
+	# else
+	# 	title="version: ${version}"
+	# fi
+
+	title="version: ${version}"
 	err_echo "title is: $title"
 
 	echo "$title" >"$fout"
@@ -354,31 +356,35 @@ confirm_valid_version() {
 	local tag=$1
 	local result=true
 
-	if [[ $(check_for_used_version v"$tag") == true ]]; then
-		result=false
-		err_echo "This version tag $tag has already been used."
-	fi
+	if [[ $tag == "$unversioned_text" ]]; then
+		result=true
+	else
+		if [[ $(check_for_used_version v"$tag") == true ]]; then
+			result=false
+			err_echo "This version tag $tag has already been used."
+		fi
 
-	if [[ $(check_ver_format "$tag") == false ]]; then
-		result=false
-		err_echo "Improperly formatted version: $tag"
+		if [[ $(check_ver_format "$tag") == false ]]; then
+			result=false
+			err_echo "Improperly formatted version: $tag"
+		fi
 	fi
 	echo "$result"
 }
 
-# Populate the CHANGES file based on output from "git log"
+# Populate the CHANGE_LOG file based on output from "git log"
 # Note: This is done after a commit so this operation creates an 'unstaged' file.
 write_changes_file() {
 	# No params
 	# No return value.
-	# Side effect: writes to CHANGES file
+	# Side effect: writes to CHANGE_LOG file
 	local result
 	local fout
 	fout="$(mktemp)"
 	git log --pretty=medium >"$fout"
 	result=$(filter_lines "Date" "commit" "Author" "$fout")
 	# remove leading spaces (sed) and collapse multiple blank lines (cat -s)
-	echo "$result" | sed "s/^[ \t]*//" | cat -s >CHANGES
+	echo "$result" | sed "s/^[ \t]*//" | cat -s >CHANGE_LOG
 }
 
 # Clean the current branch and commit it with message from GIT_MSG
@@ -391,7 +397,9 @@ commit_branch() {
 	result=$(create_git_message "$version") # result is an array of strings
 	git commit -m "$result"
 	mark_git_msg_file
-	git tag "v${version}" # TODO: tag only if valid version
+	if [[ $version != "$unversioned_text" ]]; then
+		git tag "v${version}"
+	fi
 
 	err_echo ""
 	read -rn 1 -p "Push origin? [y,n] " input
@@ -436,26 +444,25 @@ main() {
 	echo "-> current version:   $cur_ver"
 
 	bump_choice=$(get_bump_choice)
-	# err_echo "---- >bump choice returning: $bump_choice"
 	exit_on_quit "$bump_choice" || exit 1
 
 	new_ver=$(bump_current_version "$cur_ver" "$bump_choice")
-	echo "-> new version will be: $new_ver"
+	echo -e "\n-> new version will be: $new_ver"
 
 	if [[ $(confirm_valid_version "$new_ver") == false ]]; then
 		echo "error: can not use this version. exiting"
 		exit
 	fi
 
+	echo
 	prompt_confirm "Continue commit_branch? " || exit
 	commit_branch "$new_ver"
 	write_changes_file
 
 	echo ""
 	prompt_confirm "Continue commit tag? " || exit
-	commit_tag "$new_ver"  # TODO: check for un-tagged commit
+	commit_tag "$new_ver" # TODO: check for un-tagged commit
 	echo
 }
 
 main
-
