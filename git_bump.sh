@@ -77,6 +77,7 @@ get_input_choice() {
 	echo "$rv"
 }
 
+# output to stderr.
 err_echo() {
 	echo "$1" >&2
 }
@@ -155,7 +156,7 @@ show_commit_count() {
 
 populate_files() {
 	if [[ ! -f GIT_MSG ]]; then
-		echo "creating file: GIT_MSG"
+		echo "-> creating file: GIT_MSG"
 		touch GIT_MSG
 	fi
 }
@@ -164,7 +165,6 @@ handle_error() {
 	echo "A trap error occurred!"
 }
 
-NO_TAGS="<no tags>" # TODO - remove
 # null version is a valid version format but indicates
 # no version present in the repository.
 NULL_VERSION="0.0.0"
@@ -175,9 +175,9 @@ check_ver_format() {
 	local ver=$1
 	# err_echo "check_ver_format of: $ver"
 	if [[ $ver =~ $re_ver ]]; then
-		echo "true"
+		echo true
 	else
-		echo "false"
+		echo false
 	fi
 }
 
@@ -191,8 +191,8 @@ check_tag_format() {
 	fi
 }
 
-# Get the latest tag
-# example tag: "v0.1.8"
+# Get the latest tag: example tag: "v0.1.8"
+# ret val: latest_tag is one exist, otherwise NULL_TAG
 get_latest_tag() {
 	# params: None
 	local latest_tag # return value
@@ -208,9 +208,9 @@ get_latest_tag() {
 }
 
 # Get default version from previous commit.
+# This version is the basis for the bump increment.
 # If no previous commits, then use default.
 # return the latest tag used.
-# params: none
 get_default_version() {
 	# No params
 	local default_ver # return value
@@ -220,10 +220,12 @@ get_default_version() {
 	if [[ $(check_tag_format "$latest_tag") == true ]]; then
 		default_ver=$(remove_first_character "$latest_tag")
 	else
-		err_echo "-> ERROR: bad tag format"
+		err_echo "-> Error: bad tag format"
 		err_echo "-> Reverting to NULL tag"
 		default_ver=$NULL_VERSION
 	fi
+
+	err_echo "-> current version:   $default_ver"
 	echo "$default_ver"
 }
 
@@ -269,7 +271,7 @@ get_suggested_bump() {
 	'p') v_patch=$((v_patch + 1)) ;;
 	'n') ;;
 	*)
-		err_echo "ERROR: 'get_suggested_bump' no param 2: $bump_type"
+		err_echo "-> Error: 'get_suggested_bump' no param 2: $bump_type"
 		exit
 		;;
 	esac
@@ -278,21 +280,29 @@ get_suggested_bump() {
 	echo "$suggested_version"
 }
 
+# cleanup() {
+#     echo "trap cleanup"
+#     exit 1
+# }
+#
+# trap "cleanup" EXIT
+
 # Suggest a new version based on previous version and
 # choice from M, m, p prompt.
 # return wanted version number in M.m.p format
 bump_current_version() {
-	# param $1: version to bump
-	# param $2: bump_code -- Major, minor, patch, none
-	local new_version # return value
+	local cur_version=$1 # param $1: version to bump
+	local bump_code=$2   # param $2: bump_code -- Major, minor, patch, none
+	local new_version    # return value
 
-	local cur_version=$1
-	local bump_code=$2
 	local suggested_version
+	local exit_loop
+	local result
+
+	exit_on_quit "$bump_choice" || exit 1
 
 	if [[ $bump_code == 'n' ]]; then
-		# err_echo "Not using a version number for this branch commit"
-		echo "$unversioned_text"
+		new_version="$unversioned_text"
 	else
 		suggested_version=$(get_suggested_bump "$cur_version" "$bump_code")
 		# err_echo "returned value for suggested version: $suggested_version"
@@ -300,17 +310,29 @@ bump_current_version() {
 		err_echo "-> Press Enter to accept suggested version, or"
 		err_echo "-> Over-ride with a value in M.m.p format"
 		err_echo ""
-		exit_cond=false
-		while [[ $exit_cond != true ]]; do
-			read -rp "Suggested version:     [$suggested_version]: " new_version
+		exit_loop=false
+		while [[ $exit_loop != true ]]; do
+			read -rp "Suggested version:      [$suggested_version]: " new_version
 			err_echo ""
 			if [ "$new_version" = "" ]; then
 				new_version=$suggested_version # accept default
 			fi
 			if [[ $(check_ver_format "$new_version") == true ]]; then
-				exit_cond=true
+				exit_loop=true
 			fi
 		done
+
+		err_echo "-> new version will be:  $new_version"
+
+		result=$(confirm_valid_version "$new_version")
+		# err_echo "result value is: |""$result""|"
+
+		if [[ "$result" == false ]]; then
+			err_echo "-> Error: can not use this version. exiting"
+			new_version=""
+		else
+			err_echo "-> all good!"
+		fi
 
 		echo "$new_version"
 	fi
@@ -323,16 +345,9 @@ create_git_message() {
 	local fout  # temp file
 	local lines # return value
 	fout=$(mktemp)
-	# err_echo "enter create_git_message with version: $version"
-
-	# if [[ $(check_ver_format "$version") == false ]]; then
-	# 	title="no version"
-	# else
-	# 	title="version: ${version}"
-	# fi
 
 	title="version: ${version}"
-	err_echo "title is: $title"
+	err_echo "git -m title is: $title"
 
 	echo "$title" >"$fout"
 	echo "" >>"$fout"
@@ -347,28 +362,29 @@ create_git_message() {
 	done
 }
 
+# Apptend marker line to end of GIT_MSG file
 mark_git_msg_file() {
-    local ver=$1    # param $1. version just commited
+	local ver=$1 # param $1. version just commited
 	echo "--- Contents above this line were committed in version: $ver ---" >>GIT_MSG
 }
 
 confirm_valid_version() {
-	# param $1: version to check
-	local tag=$1
-	local result=true
+	local tag=$1 # param $1: version to check
+	local result # return value
 
 	if [[ $tag == "$unversioned_text" ]]; then
 		result=true
-	else
-		if [[ $(check_for_used_version v"$tag") == true ]]; then
-			result=false
-			err_echo "This version tag $tag has already been used."
-		fi
 
-		if [[ $(check_ver_format "$tag") == false ]]; then
-			result=false
-			err_echo "Improperly formatted version: $tag"
-		fi
+	elif [[ $(check_for_used_version v"$tag") == true ]]; then
+		err_echo "-> Error: This version tag $tag has already been used."
+		result=false
+
+	elif [[ $(check_ver_format "$tag") == false ]]; then
+		err_echo "-> Error: Improperly formatted version: $tag"
+		result=false
+
+	else
+		result=true
 	fi
 	echo "$result"
 }
@@ -392,7 +408,11 @@ write_changes_file() {
 commit_branch() {
 	# param $1: version to commit
 	local version=$1
+
+	prompt_confirm "Continue commit_branch? " || exit
+
 	echo "=> git add ."
+	echo
 	git add .
 	echo "=> git commit"
 	result=$(create_git_message "$version") # result is an array of strings
@@ -412,56 +432,54 @@ commit_branch() {
 
 # Do a tag commit
 commit_tag() {
-	local new_version=$1
+	local new_version=$1 # param 1
+	# No return value
+	local can_proceed
 
+	prompt_confirm "Continue commit tag? " || exit
+
+	can_proceed=false
 	if [[ -z "$new_version" ]]; then
 		echo "-> new_version String is empty"
-		echo "-> Aborting commit"
-		exit
+		echo "-> aborting commit"
+		exit # TODO: fix - will not exit
 	else
 		echo "-> proceeding with commit"
+		can_proceed=true
 	fi
 
-	# TODO: test version for proper format
-
-	echo "=> git tag"
-	# git tag -a -m "Tagging version $new_version" "v$new_version" # annotated tag
-	read -rn 1 -p "Push origin? [y,n] " input
-	if [[ $input == 'y' ]]; then
-		echo "=> git push origin --tags"
-		git push origin --tags
+	if [[ $can_proceed == true ]]; then
+		echo -e "\n=> git tag"
+		git tag -a -m "Tagging version $new_version" "v$new_version" # annotated tag
+		read -rn 1 -p "Push origin? [y,n] " input
+		if [[ $input == 'y' ]]; then
+			echo "=> git push origin --tags"
+			git push origin --tags
+		fi
 	fi
 }
 
 main() {
 	local cur_ver new_ver
 	populate_files
+	# Some history
 	echo "-> current directory: $(pwd)"
 	check_is_repository
 	show_current_branch
 	show_commit_count
-
 	cur_ver=$(get_default_version)
-	echo "-> current version:   $cur_ver"
 
+	# Specfy intent
 	bump_choice=$(get_bump_choice)
-	exit_on_quit "$bump_choice" || exit 1
-
 	new_ver=$(bump_current_version "$cur_ver" "$bump_choice")
-	echo -e "\n-> new version will be: $new_ver"
+	if [[ $new_ver == "" ]]; then exit 1; fi
 
-	if [[ $(confirm_valid_version "$new_ver") == false ]]; then
-		echo "error: can not use this version. exiting"
-		exit
-	fi
-
+	# Execute intent
 	echo
-	prompt_confirm "Continue commit_branch? " || exit
 	commit_branch "$new_ver"
 	write_changes_file
 
-	echo ""
-	prompt_confirm "Continue commit tag? " || exit
+	echo
 	commit_tag "$new_ver" # TODO: check for un-tagged commit
 	echo
 }

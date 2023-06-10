@@ -1,3 +1,1 @@
-doc: update to README.md
-
-feat: post-commit line appended to end of GIT_MSG now more explicit
+- refactor: moved testing in function main to functions called by main

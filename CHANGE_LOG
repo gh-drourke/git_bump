@@ -1,4 +1,8 @@
 
+version: 0.1.11
+
+doc: update to README.md
+
 version: 0.1.10
 
 - chore: CHANGES file renamed to CHANGE_LOG

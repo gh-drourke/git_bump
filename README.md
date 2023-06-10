@@ -4,9 +4,11 @@ This script does the following:
 
 ## 1. Handles staging and commits to local branch
 
-The user maintains a list of changes since the last commit in a file called GIT_MSG. This file becomes the message content to the -m option when executing "$ git commit -m <GIT_MSG>"
+The user maintains a list of changes since the last commit in a file called GIT_MSG. 
 
-## 2. Handle TAG commits
+This file becomes the message content to the -m option when executing "$ git commit -m <GIT_MSG>"
+
+## 2. Handles TAG commits
 
 After a "git commit" another "git tag" is optional.
 
