@@ -1,1 +1,3 @@
-- refactor: moved testing in function main to functions called by main
+- style: change name of some globals
+
+- style: removed some comments and dead code

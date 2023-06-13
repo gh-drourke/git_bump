@@ -1,12 +1,16 @@
 #!/bin/bash
 
 # reg exp to test for a valid version tag
-# local re_ver="^v\d+\.\d+\.\d+$" # does not work
+# local RE_VER="^v\d+\.\d+\.\d+$" # does not work
 
 # Globals
-re_tag="^v[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$"
-re_ver="^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$"
-unversioned_text="( no version tag )"
+RE_TAG="^v[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$"
+RE_VER="^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$"
+UNVERSIONED_TEXT="( no version tag )"
+# 'null version' has a valid version format but indicates
+# no version info present in the repository.
+NULL_VERSION="0.0.0"
+NULL_TAG="v$NULL_VERSION"
 
 match_pattern() {
 	input_str="$1"
@@ -161,20 +165,11 @@ populate_files() {
 	fi
 }
 
-handle_error() {
-	echo "A trap error occurred!"
-}
-
-# null version is a valid version format but indicates
-# no version present in the repository.
-NULL_VERSION="0.0.0"
-NULL_TAG="v$NULL_VERSION"
-
 # return true if 'version has valid format
 check_ver_format() {
 	local ver=$1
 	# err_echo "check_ver_format of: $ver"
-	if [[ $ver =~ $re_ver ]]; then
+	if [[ $ver =~ $RE_VER ]]; then
 		echo true
 	else
 		echo false
@@ -184,7 +179,7 @@ check_ver_format() {
 # return true if tag format conforms to:  v<digits>.<digits>.<digits>
 check_tag_format() {
 	local tag=$1
-	if [[ $tag =~ $re_tag ]]; then
+	if [[ $tag =~ $RE_TAG ]]; then
 		echo true
 	else
 		echo false
@@ -280,16 +275,6 @@ get_suggested_bump() {
 	echo "$suggested_version"
 }
 
-# cleanup() {
-#     echo "trap cleanup"
-#     exit 1
-# }
-#
-# trap "cleanup" EXIT
-
-# Suggest a new version based on previous version and
-# choice from M, m, p prompt.
-# return wanted version number in M.m.p format
 bump_current_version() {
 	local cur_version=$1 # param $1: version to bump
 	local bump_code=$2   # param $2: bump_code -- Major, minor, patch, none
@@ -302,7 +287,7 @@ bump_current_version() {
 	exit_on_quit "$bump_choice" || exit 1
 
 	if [[ $bump_code == 'n' ]]; then
-		new_version="$unversioned_text"
+		new_version="$UNVERSIONED_TEXT"
 	else
 		suggested_version=$(get_suggested_bump "$cur_version" "$bump_code")
 		# err_echo "returned value for suggested version: $suggested_version"
@@ -372,7 +357,7 @@ confirm_valid_version() {
 	local tag=$1 # param $1: version to check
 	local result # return value
 
-	if [[ $tag == "$unversioned_text" ]]; then
+	if [[ $tag == "$UNVERSIONED_TEXT" ]]; then
 		result=true
 
 	elif [[ $(check_for_used_version v"$tag") == true ]]; then
@@ -411,21 +396,21 @@ commit_branch() {
 
 	prompt_confirm "Continue commit_branch? " || exit
 
-	echo "=> git add ."
+	echo -e "\n=> git add ."
 	echo
 	git add .
 	echo "=> git commit"
 	result=$(create_git_message "$version") # result is an array of strings
 	git commit -m "$result"
 	mark_git_msg_file "$version"
-	if [[ $version != "$unversioned_text" ]]; then
+	if [[ $version != "$UNVERSIONED_TEXT" ]]; then
 		git tag "v${version}"
 	fi
 
 	err_echo ""
 	read -rn 1 -p "Push origin? [y,n] " input
 	if [[ $input == 'y' ]]; then
-		echo "=> git push origin -- branch":
+		echo -e "\n=> git push origin -- branch":
 		git push origin
 	fi
 }
@@ -438,11 +423,10 @@ commit_tag() {
 
 	prompt_confirm "Continue commit tag? " || exit
 
-	can_proceed=false
 	if [[ -z "$new_version" ]]; then
 		echo "-> new_version String is empty"
 		echo "-> aborting commit"
-		exit # TODO: fix - will not exit
+		can_proceed=false
 	else
 		echo "-> proceeding with commit"
 		can_proceed=true
@@ -453,7 +437,7 @@ commit_tag() {
 		git tag -a -m "Tagging version $new_version" "v$new_version" # annotated tag
 		read -rn 1 -p "Push origin? [y,n] " input
 		if [[ $input == 'y' ]]; then
-			echo "=> git push origin --tags"
+			echo -e "\n=> git push origin --tags"
 			git push origin --tags
 		fi
 	fi
@@ -462,14 +446,15 @@ commit_tag() {
 main() {
 	local cur_ver new_ver
 	populate_files
-	# Some history
+
+	# Locate our context
 	echo "-> current directory: $(pwd)"
 	check_is_repository
 	show_current_branch
 	show_commit_count
 	cur_ver=$(get_default_version)
 
-	# Specfy intent
+	# Specify intent
 	bump_choice=$(get_bump_choice)
 	new_ver=$(bump_current_version "$cur_ver" "$bump_choice")
 	if [[ $new_ver == "" ]]; then exit 1; fi

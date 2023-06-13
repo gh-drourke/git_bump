@@ -18,9 +18,9 @@ For all commits, the next version number is suggested.
 
 It is also possible to commit without a version tag.
 
-## 4. Maintain a history of git log
+## 4. Maintain a filtered history of git log
 
-An list of all git messages is put into a file called 'CHANGE_LOg'
+An list of all git messages is put into a file called 'CHANGE_LOG'
 
 This log is filtered by the removal of lines starting with "author", "date" and "commit"
 

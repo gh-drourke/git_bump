@@ -1,4 +1,8 @@
 
+version: 0.1.12
+
+- refactor: moved testing in function main to functions called by main
+
 version: 0.1.11
 
 doc: update to README.md
