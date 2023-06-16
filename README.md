@@ -44,6 +44,9 @@ This file is maintained by the script and is changed with every branch commit.
 
 The CHANGES files contains the output from the "git log" command and is filtered by the removal of all lines starting with "author", "date" or "commit".
 
+Note: This file is current on the local system after a local commit. However, it is written after the commit as such is pushed to the remote. If the commit is pushed to the remote, the CHANGES file will not include the current lines in GIT_MSG.:w
+
+
 2. GIT_MSG:
 
 The file GIT_MSG is maintained by the user and contains the content to be written to the next "git commit".
@@ -54,21 +57,19 @@ This file is updated with a marker with each commit at the end to indicate what 
 
 All content above this line should be deleted before the next branch commit.
 
-# Tagging
+# Versions
 
-Tags are maintained in a three digit format: Major.minor.patch
+Versions are maintained in a 3-tuple format: Major.minor.patch
 
-1. Any branch commit can receive a lightweight tag.
+1. Any branch commit can (and by default does) receive a lightweight tag.
 
 2. An annotated tag can be made after any branch commit.
-
-(to implement: only if it has a version number that corresponds to a local tag commit.)
 
 3. A 'suggested tag' is offered based on the latest tag in a sequence.
 
 4. Tags may not be reused.
 
-5. Tags are strictly used in triplet format: M.m.p
+5. Tags are strictly used in 3-tuple format: M.m.p
 
 # Usage
 

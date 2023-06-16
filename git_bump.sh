@@ -4,9 +4,12 @@
 # local RE_VER="^v\d+\.\d+\.\d+$" # does not work
 
 # Globals
-RE_TAG="^v[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$"
-RE_VER="^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$"
+RE_BASE="[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}"
+RE_VER="^${RE_BASE}$"
+RE_TAG="^v${RE_BASE}$"
 UNVERSIONED_TEXT="( no version tag )"
+# Do not commit, tag, or push when TEST_MODE is true
+TEST_MODE=false
 # 'null version' has a valid version format but indicates
 # no version info present in the repository.
 NULL_VERSION="0.0.0"
@@ -401,17 +404,30 @@ commit_branch() {
 	git add .
 	echo "=> git commit"
 	result=$(create_git_message "$version") # result is an array of strings
-	git commit -m "$result"
+	if [[ $TEST_MODE == false ]]; then
+		git commit -m "$result"
+	else
+		echo "-> TEST_MODE - no commit"
+	fi
 	mark_git_msg_file "$version"
 	if [[ $version != "$UNVERSIONED_TEXT" ]]; then
-		git tag "v${version}"
+		if [[ $TEST_MODE == false ]]; then
+			git tag "v${version}"
+		else
+			echo "-> TEST_MODE - no git tag"
+		fi
 	fi
 
 	err_echo ""
+
 	read -rn 1 -p "Push origin? [y,n] " input
 	if [[ $input == 'y' ]]; then
 		echo -e "\n=> git push origin -- branch":
-		git push origin
+		if [[ $TEST_MODE == false ]]; then
+			git push origin
+		else
+			echo "-> TEST_MODE - no git push origin"
+		fi
 	fi
 }
 
@@ -438,12 +454,21 @@ commit_tag() {
 		read -rn 1 -p "Push origin? [y,n] " input
 		if [[ $input == 'y' ]]; then
 			echo -e "\n=> git push origin --tags"
-			git push origin --tags
+
+			if [[ $TEST_MODE == false ]]; then
+				git push origin --tags
+			else
+				echo "-> TEST_MODE - no git push origin --tags"
+			fi
 		fi
 	fi
 }
 
 main() {
+	if [[ $TEST_MODE == true ]]; then
+		echo "In test mode"
+	fi
+
 	local cur_ver new_ver
 	populate_files
 

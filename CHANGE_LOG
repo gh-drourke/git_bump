@@ -1,4 +1,10 @@
 
+version: 0.1.13
+
+- style: change name of some globals
+
+- style: removed some comments and dead code
+
 version: 0.1.12
 
 - refactor: moved testing in function main to functions called by main
