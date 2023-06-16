@@ -1,3 +1,5 @@
-- docs: updates to README.md
+- feat: git version now printed
 
-- feat: introduced global NO_COMMIT for testing and debugging
+- fix: instead of 'git push origin --tags', using git push origin refs/tags/v"$new_version".
+  This is to push a single annotated tag 
+

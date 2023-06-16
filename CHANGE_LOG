@@ -1,4 +1,10 @@
 
+version: 0.2.0
+
+- docs: updates to README.md
+
+- feat: introduced global NO_COMMIT for testing and debugging
+
 version: 0.1.13
 
 - style: change name of some globals

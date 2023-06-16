@@ -393,11 +393,11 @@ write_changes_file() {
 }
 
 # Clean the current branch and commit it with message from GIT_MSG
-commit_branch() {
+commit_local_branch() {
 	# param $1: version to commit
 	local version=$1
 
-	prompt_confirm "Continue commit_branch? " || exit
+	prompt_confirm "Continue commit_local_branch? " || exit
 
 	echo -e "\n=> git add ."
 	echo
@@ -419,7 +419,6 @@ commit_branch() {
 	fi
 
 	err_echo ""
-
 	read -rn 1 -p "Push origin? [y,n] " input
 	if [[ $input == 'y' ]]; then
 		echo -e "\n=> git push origin -- branch":
@@ -453,10 +452,11 @@ commit_tag() {
 		git tag -a -m "Tagging version $new_version" "v$new_version" # annotated tag
 		read -rn 1 -p "Push origin? [y,n] " input
 		if [[ $input == 'y' ]]; then
-			echo -e "\n=> git push origin --tags"
+			echo -e "\n=> git push origin refs/tags/v""$new_version"""
 
 			if [[ $TEST_MODE == false ]]; then
-				git push origin --tags
+				# git push origin --tags
+                git push origin refs/tags/v"$new_version"
 			else
 				echo "-> TEST_MODE - no git push origin --tags"
 			fi
@@ -469,10 +469,12 @@ main() {
 		echo "In test mode"
 	fi
 
+
 	local cur_ver new_ver
 	populate_files
 
 	# Locate our context
+    echo "-> $(git --version)"
 	echo "-> current directory: $(pwd)"
 	check_is_repository
 	show_current_branch
@@ -486,7 +488,7 @@ main() {
 
 	# Execute intent
 	echo
-	commit_branch "$new_ver"
+	commit_local_branch "$new_ver"
 	write_changes_file
 
 	echo
