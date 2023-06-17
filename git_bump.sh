@@ -357,18 +357,18 @@ mark_git_msg_file() {
 }
 
 confirm_valid_version() {
-	local tag=$1 # param $1: version to check
+	local ver_num=$1 # param $1: version to check
 	local result # return value
 
-	if [[ $tag == "$UNVERSIONED_TEXT" ]]; then
+	if [[ $ver_num == "$UNVERSIONED_TEXT" ]]; then
 		result=true
 
-	elif [[ $(check_for_used_version v"$tag") == true ]]; then
-		err_echo "-> Error: This version tag $tag has already been used."
+	elif [[ $(check_for_used_version v"$ver_num") == true ]]; then
+		err_echo "-> Error: This version number $ver_num has already been used."
 		result=false
 
-	elif [[ $(check_ver_format "$tag") == false ]]; then
-		err_echo "-> Error: Improperly formatted version: $tag"
+	elif [[ $(check_ver_format "$ver_num") == false ]]; then
+		err_echo "-> Error: Improperly formatted version: $ver_num"
 		result=false
 
 	else
@@ -392,9 +392,10 @@ write_changes_file() {
 	echo "$result" | sed "s/^[ \t]*//" | cat -s >CHANGE_LOG
 }
 
-# Clean the current branch and commit it with message from GIT_MSG
+# Clean the current branch, commit it with message from GIT_MSG, tag and push origin
 commit_local_branch() {
 	# param $1: version to commit
+    # return value: None
 	local version=$1
 
 	prompt_confirm "Continue commit_local_branch? " || exit
@@ -418,7 +419,7 @@ commit_local_branch() {
 		fi
 	fi
 
-	err_echo ""
+	echo
 	read -rn 1 -p "Push origin? [y,n] " input
 	if [[ $input == 'y' ]]; then
 		echo -e "\n=> git push origin -- branch":
@@ -431,25 +432,27 @@ commit_local_branch() {
 }
 
 # Do a tag commit
-commit_tag() {
+create_annotated_tag() {
 	local new_version=$1 # param 1
 	# No return value
 	local can_proceed
 
-	prompt_confirm "Continue commit tag? " || exit
+	prompt_confirm "Create annotated tag? " || exit
 
+    # error check
 	if [[ -z "$new_version" ]]; then
 		echo "-> new_version String is empty"
 		echo "-> aborting commit"
 		can_proceed=false
 	else
-		echo "-> proceeding with commit"
+		echo "-> proceeding with create annotated tag"
 		can_proceed=true
 	fi
 
 	if [[ $can_proceed == true ]]; then
-		echo -e "\n=> git tag"
+		echo -e "\n=> git tag -a -m"
 		git tag -a -m "Tagging version $new_version" "v$new_version" # annotated tag
+
 		read -rn 1 -p "Push origin? [y,n] " input
 		if [[ $input == 'y' ]]; then
 			echo -e "\n=> git push origin refs/tags/v""$new_version"""
@@ -458,7 +461,7 @@ commit_tag() {
 				# git push origin --tags
                 git push origin refs/tags/v"$new_version"
 			else
-				echo "-> TEST_MODE - no git push origin --tags"
+				echo "-> TEST_MODE - no git push origin "
 			fi
 		fi
 	fi
@@ -492,7 +495,7 @@ main() {
 	write_changes_file
 
 	echo
-	commit_tag "$new_ver" # TODO: check for un-tagged commit
+	create_annotated_tag "$new_ver"
 	echo
 }
 

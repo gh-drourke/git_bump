@@ -1,4 +1,11 @@
 
+version: 0.2.1
+
+- feat: git version now printed
+
+- fix: instead of 'git push origin --tags', using git push origin refs/tags/v"$new_version".
+This is to push a single annotated tag
+
 version: 0.2.0
 
 - docs: updates to README.md

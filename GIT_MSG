@@ -1,5 +1,5 @@
-- feat: git version now printed
+- docs: update to README.md
 
-- fix: instead of 'git push origin --tags', using git push origin refs/tags/v"$new_version".
-  This is to push a single annotated tag 
+- style: variable name change in 'confirm_valid_version'
 
+- style: renamed 'commit_tag' to 'create_annotated_tag'
