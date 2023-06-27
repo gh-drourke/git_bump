@@ -1,6 +1,6 @@
 # Purpose
 
-This is a personal script to to maintain a local and optional remote git repository while supporting the following workflow:
+This is a personal script to to maintain a local and optional remote git repository that supports the following workflow:
 
 1. Changes that need to be documented are done so by editing a separate file GIT_MSG.
 
@@ -65,7 +65,7 @@ The CHANGES files contains the output from the "git log" command and is filtered
 
 Note: This file is 'up-to-date' on the local system. However, as it is generated after a local commit, it is now an unstaged file and will not be included in the current push to the remote.
 
-# Version numbers and Tags
+# Version Numbers and Tags
 
 1. Version numbers are strictly maintained in a 3-tuple format: Major.minor.patch
 

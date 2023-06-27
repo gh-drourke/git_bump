@@ -86,7 +86,7 @@ get_input_choice() {
 
 # output to stderr.
 err_echo() {
-	echo "$1" >&2
+	echo -e "$1" >&2
 }
 
 # Test input character for 'q'
@@ -119,13 +119,45 @@ filter_lines() {
 	echo "$filtered_lines"
 }
 
+combine_commit_lines() {
+	local input_lines=$1    # Input lines string
+	local combined_lines="" # Output lines string
+
+	# Read the input lines string line by line
+	while IFS= read -r line1; do
+		# Check if the line starts with "commit"
+		if [[ $line1 == commit* ]]; then
+			read -r line2
+			read -r line3
+			combined_line="$line3 $line2          (${line1})"$'\n'
+			combined_lines+="$combined_line" # Add the combined line to the output string
+		else
+			combined_lines+="$line1"$'\n'
+		fi
+	done <<<"$input_lines"
+
+	echo "$combined_lines" # Pass the output string back to the calling code
+}
+
+revise_git_log() {
+	input_file=$1
+	output_file=$2
+
+	while IFS= read -r line; do
+		revised_line=$(shorten_commit_hash "$line")
+		# revised_line="$revised_line\n"
+		echo "$revised_line" >>"$output_file"
+		# err_echo "$revised_line"
+	done <"$input_file"
+}
+
 # Check for existence of .git repository.
 # If respoitory not present, offer to initialise one.
 check_is_repository() {
 	# params: None
 	# return value: None
 	if [[ ! -d ".git" ]]; then
-		echo "Git respoitory Not initialised"
+		echo "Git respository Not initialised"
 		read -r -n 1 -p "Press 'y' to initialise: " input
 		echo
 		if [[ $input == 'y' ]]; then
@@ -335,7 +367,7 @@ create_git_message() {
 	fout=$(mktemp)
 
 	title="version: ${version}"
-	err_echo "git -m title is: $title"
+	err_echo "git -m title is: $title\n"
 
 	echo "$title" >"$fout"
 	echo "" >>"$fout"
@@ -350,7 +382,7 @@ create_git_message() {
 	done
 }
 
-# Apptend marker line to end of GIT_MSG file
+# Append marker line to end of GIT_MSG file
 mark_git_msg_file() {
 	local ver=$1 # param $1. version just commited
 	echo "--- Contents above this line were committed in version: $ver ---" >>GIT_MSG
@@ -358,7 +390,7 @@ mark_git_msg_file() {
 
 confirm_valid_version() {
 	local ver_num=$1 # param $1: version to check
-	local result # return value
+	local result     # return value
 
 	if [[ $ver_num == "$UNVERSIONED_TEXT" ]]; then
 		result=true
@@ -386,16 +418,42 @@ write_changes_file() {
 	local result
 	local fout
 	fout="$(mktemp)"
-	git log --pretty=medium >"$fout"
-	result=$(filter_lines "Date" "commit" "Author" "$fout")
+	# git log --pretty=medium >"$fout"
+	git log --abbrev-commit >"$fout"
+	# result=$(filter_lines "Date" "commit" "Author" "$fout")
+	result=$(filter_lines "Date" "Author" "$fout")
 	# remove leading spaces (sed) and collapse multiple blank lines (cat -s)
 	echo "$result" | sed "s/^[ \t]*//" | cat -s >CHANGE_LOG
+}
+
+write_changes_file1() {
+	# No params
+	# No return value.
+	# Side effect: writes to CHANGE_LOG file
+	local result_lines
+	local log_lines
+	log_lines="$(mktemp)"
+
+	git log --abbrev-commit >"$log_lines"
+	result_lines=$(filter_lines "Date" "Author" "$log_lines")
+	echo -e "\n===== filter lines ====="
+	echo -e "$result_lines"
+	echo "===== filter lines ====="
+
+	result_lines=$(combine_commit_lines "$result_lines")
+
+	echo -e "\n\n==== combine lines ==="
+	echo -e "$result_lines"
+	echo "========================"
+
+	# remove leading spaces (sed) and collapse multiple blank lines (cat -s)
+	echo "$result_lines" | sed "s/^[ \t]*//" | cat -s >CHANGE_LOG
 }
 
 # Clean the current branch, commit it with message from GIT_MSG, tag and push origin
 commit_local_branch() {
 	# param $1: version to commit
-    # return value: None
+	# return value: None
 	local version=$1
 
 	prompt_confirm "Continue commit_local_branch? " || exit
@@ -439,7 +497,7 @@ create_annotated_tag() {
 
 	prompt_confirm "Create annotated tag? " || exit
 
-    # error check
+	# error check
 	if [[ -z "$new_version" ]]; then
 		echo "-> new_version String is empty"
 		echo "-> aborting commit"
@@ -459,11 +517,19 @@ create_annotated_tag() {
 
 			if [[ $TEST_MODE == false ]]; then
 				# git push origin --tags
-                git push origin refs/tags/v"$new_version"
+				git push origin refs/tags/v"$new_version"
 			else
 				echo "-> TEST_MODE - no git push origin "
 			fi
 		fi
+	fi
+}
+
+truncate_git_msg_file() {
+	echo
+	read -rn 1 -p "Truncate GIT_MSG? [y,n] " input
+	if [[ $input == 'y' ]]; then
+		cat /dev/null >GIT_MSG
 	fi
 }
 
@@ -472,12 +538,11 @@ main() {
 		echo "In test mode"
 	fi
 
-
 	local cur_ver new_ver
 	populate_files
 
 	# Locate our context
-    echo "-> $(git --version)"
+	echo "-> $(git --version)"
 	echo "-> current directory: $(pwd)"
 	check_is_repository
 	show_current_branch
@@ -493,6 +558,7 @@ main() {
 	echo
 	commit_local_branch "$new_ver"
 	write_changes_file
+	truncate_git_msg_file
 
 	echo
 	create_annotated_tag "$new_ver"
@@ -500,3 +566,4 @@ main() {
 }
 
 main
+# write_changes_file1

@@ -1,5 +1,6 @@
-test.sh
+test*
 GIT_MSG
 .git_save
 .git_gh
 fout
+debug/

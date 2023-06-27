@@ -1,5 +1,1 @@
-- docs: update to README.md
-
-- style: variable name change in 'confirm_valid_version'
-
-- style: renamed 'commit_tag' to 'create_annotated_tag'
+- feat: line spacing after print title
