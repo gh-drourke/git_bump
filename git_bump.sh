@@ -15,6 +15,45 @@ TEST_MODE=false
 NULL_VERSION="0.0.0"
 NULL_TAG="v$NULL_VERSION"
 
+source ./read_yn.sh
+
+function check_ssh_agent() {
+	local processId
+	processId=$(pgrep ssh-agent)
+
+	if [[ -z "$processId" ]]; then
+		echo false
+	else
+		echo true
+	fi
+}
+
+function start_ssh_agent() {
+	# Check if ssh-agent process is running
+	local processId
+	processId=$(pgrep ssh-agent)
+
+	# If ssh-agent process is not running, start it
+	if [[ -z "$processId" ]]; then
+		eval "$(ssh-agent)"
+		echo "ssh-agent started."
+	fi
+	echo
+}
+
+function add_ssh_keys_to_agent() {
+	# Add all private keys in ~/.ssh to ssh-agent
+	local privateKeyFiles
+	privateKeyFiles=$(ls ~/.ssh/id_* 2>/dev/null)
+
+	for privateKeyFile in $privateKeyFiles; do
+		if [[ $privateKeyFile != *.pub ]]; then
+			ssh-add "$privateKeyFile"
+			# echo "Added key: $privateKeyFile"
+		fi
+	done
+}
+
 match_pattern() {
 	input_str="$1"
 	pattern_str="$2"
@@ -48,22 +87,8 @@ check_for_used_version() {
 	local result
 	list=($(git tag))
 	result=$(match_str "${list[@]}" "$search_str")
-	# err_echo ".. check_for_used_version result: $result"
+	# stderr_echo ".. check_for_used_version result: $result"
 	echo "$result"
-}
-
-prompt_confirm() {
-	# usage: prompt_confirm "message" || exit 0
-	local msg=$1
-	local reply
-	while true; do
-		read -r -n 1 -p "$msg [y/n]: " reply
-		case $reply in
-		[yY]) return 0 ;; # true
-		[nN]) return 1 ;; # false
-		*) printf " \033[31m %s \n\033[0m" "invalid input" ;;
-		esac
-	done
 }
 
 # return value: single letter choice
@@ -75,7 +100,7 @@ get_input_choice() {
 
 	while true; do
 		read -rn 1 -p "$msg " input_char
-		err_echo ""
+		stderr_echo ""
 		if [[ $(match_pattern "$valid_pattern" "$input_char") == true ]]; then
 			break
 		fi
@@ -85,17 +110,12 @@ get_input_choice() {
 }
 
 # output to stderr.
-err_echo() {
+stderr_echo() {
 	echo -e "$1" >&2
 }
 
-# Test input character for 'q'
-exit_on_quit() {
-	local var="$1"
-	case ${var:0:1} in
-	q) return 1 ;;
-	*) return 0 ;;
-	esac
+test_echo() {
+	echo "    -> TEST_MODE - $1 "
 }
 
 remove_first_character() {
@@ -104,7 +124,8 @@ remove_first_character() {
 	echo "${substring}"
 }
 
-# filter out all lines matching list of keywords
+# filter out all lines in given file matching list of keywords
+# TODO this works on a string not a file
 filter_lines() {
 	local keywords=("$@")               # list of keywords
 	local file="${keywords[-1]}"        # file to process
@@ -147,7 +168,7 @@ revise_git_log() {
 		revised_line=$(shorten_commit_hash "$line")
 		# revised_line="$revised_line\n"
 		echo "$revised_line" >>"$output_file"
-		# err_echo "$revised_line"
+		# stderr_echo "$revised_line"
 	done <"$input_file"
 }
 
@@ -203,7 +224,7 @@ populate_files() {
 # return true if 'version has valid format
 check_ver_format() {
 	local ver=$1
-	# err_echo "check_ver_format of: $ver"
+	# stderr_echo "check_ver_format of: $ver"
 	if [[ $ver =~ $RE_VER ]]; then
 		echo true
 	else
@@ -250,12 +271,12 @@ get_default_version() {
 	if [[ $(check_tag_format "$latest_tag") == true ]]; then
 		default_ver=$(remove_first_character "$latest_tag")
 	else
-		err_echo "-> Error: bad tag format"
-		err_echo "-> Reverting to NULL tag"
+		stderr_echo "-> Error: bad tag format"
+		stderr_echo "-> Reverting to NULL tag"
 		default_ver=$NULL_VERSION
 	fi
 
-	err_echo "-> current version:   $default_ver"
+	stderr_echo "-> current version:   $default_ver"
 	echo "$default_ver"
 }
 
@@ -264,13 +285,13 @@ get_bump_choice() {
 	# No params
 	local result # return value
 	local msg
-	err_echo
-	err_echo "Next version bump kind:"
-	err_echo "  Major        [M]"
-	err_echo "  minor        [m]"
-	err_echo "  patch        [p]"
-	err_echo "  <no version> [n]"
-	err_echo "  quit         [q]"
+	stderr_echo
+	stderr_echo "Next version bump kind:"
+	stderr_echo "  Major        [M]"
+	stderr_echo "  minor        [m]"
+	stderr_echo "  patch        [p]"
+	stderr_echo "  <no version> [n]"
+	stderr_echo "  quit         [q]"
 	result=$(get_input_choice "Mmpnq")
 	echo "$result"
 }
@@ -301,7 +322,7 @@ get_suggested_bump() {
 	'p') v_patch=$((v_patch + 1)) ;;
 	'n') ;;
 	*)
-		err_echo "-> Error: 'get_suggested_bump' no param 2: $bump_type"
+		stderr_echo "-> Error: 'get_suggested_bump' no param 2: $bump_type"
 		exit
 		;;
 	esac
@@ -325,15 +346,15 @@ bump_current_version() {
 		new_version="$UNVERSIONED_TEXT"
 	else
 		suggested_version=$(get_suggested_bump "$cur_version" "$bump_code")
-		# err_echo "returned value for suggested version: $suggested_version"
-		err_echo ""
-		err_echo "-> Press Enter to accept suggested version, or"
-		err_echo "-> Over-ride with a value in M.m.p format"
-		err_echo ""
+		# stderr_echo "returned value for suggested version: $suggested_version"
+		stderr_echo ""
+		stderr_echo "-> Press Enter to accept suggested version, or"
+		stderr_echo "-> Over-ride with a value in M.m.p format"
+		stderr_echo ""
 		exit_loop=false
 		while [[ $exit_loop != true ]]; do
 			read -rp "Suggested version:      [$suggested_version]: " new_version
-			err_echo ""
+			stderr_echo ""
 			if [ "$new_version" = "" ]; then
 				new_version=$suggested_version # accept default
 			fi
@@ -342,16 +363,16 @@ bump_current_version() {
 			fi
 		done
 
-		err_echo "-> new version will be:  $new_version"
+		stderr_echo "-> new version will be:  $new_version"
 
 		result=$(confirm_valid_version "$new_version")
-		# err_echo "result value is: |""$result""|"
+		# stderr_echo "result value is: |""$result""|"
 
 		if [[ "$result" == false ]]; then
-			err_echo "-> Error: can not use this version. exiting"
+			stderr_echo "-> Error: can not use this version. exiting"
 			new_version=""
 		else
-			err_echo "-> all good!"
+			stderr_echo "-> all good!"
 		fi
 
 		echo "$new_version"
@@ -367,7 +388,7 @@ create_git_message() {
 	fout=$(mktemp)
 
 	title="version: ${version}"
-	err_echo "git -m title is: $title\n"
+	stderr_echo "-> git -m title is: $title\n"
 
 	echo "$title" >"$fout"
 	echo "" >>"$fout"
@@ -396,11 +417,11 @@ confirm_valid_version() {
 		result=true
 
 	elif [[ $(check_for_used_version v"$ver_num") == true ]]; then
-		err_echo "-> Error: This version number $ver_num has already been used."
+		stderr_echo "-> Error: This version number $ver_num has already been used."
 		result=false
 
 	elif [[ $(check_ver_format "$ver_num") == false ]]; then
-		err_echo "-> Error: Improperly formatted version: $ver_num"
+		stderr_echo "-> Error: Improperly formatted version: $ver_num"
 		result=false
 
 	else
@@ -411,8 +432,7 @@ confirm_valid_version() {
 
 # Populate the CHANGE_LOG file based on output from "git log"
 # Note: This is done after a commit so this operation creates an 'unstaged' file.
-write_changes_file() {
-	# No params
+populate_change_log() {
 	# No return value.
 	# Side effect: writes to CHANGE_LOG file
 	local result
@@ -426,7 +446,7 @@ write_changes_file() {
 	echo "$result" | sed "s/^[ \t]*//" | cat -s >CHANGE_LOG
 }
 
-write_changes_file1() {
+populate_change_log1() {
 	# No params
 	# No return value.
 	# Side effect: writes to CHANGE_LOG file
@@ -450,43 +470,80 @@ write_changes_file1() {
 	echo "$result_lines" | sed "s/^[ \t]*//" | cat -s >CHANGE_LOG
 }
 
+truncate_git_msg_file() {
+	local reply
+	echo
+	reply=$(read_yn "Truncate GIT_MSG?" "y")
+	if [[ $reply == 'y' ]]; then
+		echo -e "-> Truncating GIT_MSG file"
+		cat /dev/null >GIT_MSG
+	fi
+}
+
+push_annotated_tag() {
+	local reply
+	reply=$(read_yn "Push origin?" "y")
+	if [[ $reply == 'y' ]]; then
+		echo -e "\n=> git push origin refs/tags/v""$new_version"""
+
+		if [[ $TEST_MODE == false ]]; then
+			git push origin refs/tags/v"$new_version"
+		else
+			test_echo "no git push origin"
+		fi
+	fi
+}
+
+push_commit() {
+	local reply
+	reply=$(read_yn "Push origin" "y")
+	echo
+	if [[ $reply == 'y' ]]; then
+		reply=$(read_yn "Use ssh_agent and add id's?" "y")
+		if [[ $reply == 'y' ]]; then
+			pkill ssh-agent
+			start_ssh_agent
+			add_ssh_keys_to_agent
+		fi
+
+		if [[ $TEST_MODE == false ]]; then
+			git push origin
+		else
+			test_echo "no git push origin"
+		fi
+	fi
+}
+
 # Clean the current branch, commit it with message from GIT_MSG, tag and push origin
 commit_local_branch() {
 	# param $1: version to commit
 	# return value: None
 	local version=$1
+	local reply
+	reply=$(read_yn "Continue to commit local branch" "y")
+	if [ "$reply" = "n" ]; then exit; fi
 
-	prompt_confirm "Continue commit_local_branch? " || exit
-
-	echo -e "\n=> git add ."
-	echo
+	echo -e "\n=> \$ git add ."
 	git add .
-	echo "=> git commit"
+	echo "=> \$ git commit"
 	result=$(create_git_message "$version") # result is an array of strings
 	if [[ $TEST_MODE == false ]]; then
 		git commit -m "$result"
 	else
-		echo "-> TEST_MODE - no commit"
+		test_echo "no commit"
 	fi
 	mark_git_msg_file "$version"
 	if [[ $version != "$UNVERSIONED_TEXT" ]]; then
-		if [[ $TEST_MODE == false ]]; then
-			git tag "v${version}"
-		else
-			echo "-> TEST_MODE - no git tag"
-		fi
+		execute_if_not_true $TEST_MODE "no git tag" "git tag v${version}"
+		# if [[ $TEST_MODE == false ]]; then
+		# 	git tag "v${version}"
+		# else
+		# 	test_echo "no git tag"
+		# fi
 	fi
 
 	echo
-	read -rn 1 -p "Push origin? [y,n] " input
-	if [[ $input == 'y' ]]; then
-		echo -e "\n=> git push origin -- branch":
-		if [[ $TEST_MODE == false ]]; then
-			git push origin
-		else
-			echo "-> TEST_MODE - no git push origin"
-		fi
-	fi
+	push_commit
 }
 
 # Do a tag commit
@@ -494,8 +551,10 @@ create_annotated_tag() {
 	local new_version=$1 # param 1
 	# No return value
 	local can_proceed
+	local reply
 
-	prompt_confirm "Create annotated tag? " || exit
+	reply=$(read_yn "Create annotated tag?" "n")
+	if [ "$reply" = "n" ]; then exit; fi
 
 	# error check
 	if [[ -z "$new_version" ]]; then
@@ -508,28 +567,12 @@ create_annotated_tag() {
 	fi
 
 	if [[ $can_proceed == true ]]; then
-		echo -e "\n=> git tag -a -m"
-		git tag -a -m "Tagging version $new_version" "v$new_version" # annotated tag
-
-		read -rn 1 -p "Push origin? [y,n] " input
-		if [[ $input == 'y' ]]; then
-			echo -e "\n=> git push origin refs/tags/v""$new_version"""
-
-			if [[ $TEST_MODE == false ]]; then
-				# git push origin --tags
-				git push origin refs/tags/v"$new_version"
-			else
-				echo "-> TEST_MODE - no git push origin "
-			fi
-		fi
-	fi
-}
-
-truncate_git_msg_file() {
-	echo
-	read -rn 1 -p "Truncate GIT_MSG? [y,n] " input
-	if [[ $input == 'y' ]]; then
-		cat /dev/null >GIT_MSG
+		echo -e "\n=> \$ git tag -a -m"
+        local cmd
+        # cmd="git tag -a -m "tagging version "$new_version"" "v"$new_version"""
+        # execute_if_not_true "$TEST_MODE" "Tagging" "$cmd"
+		git tag -a -m "tagging version $new_version" "v$new_version" # annotated tag
+		push_annotated_tag
 	fi
 }
 
@@ -541,7 +584,7 @@ main() {
 	local cur_ver new_ver
 	populate_files
 
-	# Locate our context
+	# 1. Describe context
 	echo "-> $(git --version)"
 	echo "-> current directory: $(pwd)"
 	check_is_repository
@@ -549,15 +592,15 @@ main() {
 	show_commit_count
 	cur_ver=$(get_default_version)
 
-	# Specify intent
+	# 2. Specify intent
 	bump_choice=$(get_bump_choice)
 	new_ver=$(bump_current_version "$cur_ver" "$bump_choice")
 	if [[ $new_ver == "" ]]; then exit 1; fi
 
-	# Execute intent
+	# 3. Execute intent
 	echo
 	commit_local_branch "$new_ver"
-	write_changes_file
+	populate_change_log
 	truncate_git_msg_file
 
 	echo
@@ -566,4 +609,4 @@ main() {
 }
 
 main
-# write_changes_file1
+# populate_change_log1

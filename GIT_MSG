@@ -1,1 +1,5 @@
-- feat: line spacing after print title
+-- feat: added addSshKeysToAgent
+   - checks if ssh-agent is running
+   - adds all private keys starting with "id_"
+-- style: new read input function - read_yn
+-- docs: README.md

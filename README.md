@@ -14,6 +14,7 @@ This is a personal script to to maintain a local and optional remote git reposit
 
 3. After the commit, GIT_MSG is emptied by the user.
 
+4. Before any push to remote, a check is done to see if ssh-agent is running. If it is not, the option is given to run it and add all private keys starting with "id_" as in "id_rsa"
 
 # Script's Functionality
 
