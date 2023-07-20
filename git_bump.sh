@@ -16,44 +16,9 @@ NULL_VERSION="0.0.0"
 NULL_TAG="v$NULL_VERSION"
 
 source ./read_yn.sh
+source ./ssh.sh
 
-function check_ssh_agent() {
-	local processId
-	processId=$(pgrep ssh-agent)
-
-	if [[ -z "$processId" ]]; then
-		echo false
-	else
-		echo true
-	fi
-}
-
-function start_ssh_agent() {
-	# Check if ssh-agent process is running
-	local processId
-	processId=$(pgrep ssh-agent)
-
-	# If ssh-agent process is not running, start it
-	if [[ -z "$processId" ]]; then
-		eval "$(ssh-agent)"
-		echo "ssh-agent started."
-	fi
-	echo
-}
-
-function add_ssh_keys_to_agent() {
-	# Add all private keys in ~/.ssh to ssh-agent
-	local privateKeyFiles
-	privateKeyFiles=$(ls ~/.ssh/id_* 2>/dev/null)
-
-	for privateKeyFile in $privateKeyFiles; do
-		if [[ $privateKeyFile != *.pub ]]; then
-			ssh-add "$privateKeyFile"
-			# echo "Added key: $privateKeyFile"
-		fi
-	done
-}
-
+# match input_str with pattern. Return true if match else false
 match_pattern() {
 	input_str="$1"
 	pattern_str="$2"
@@ -65,6 +30,7 @@ match_pattern() {
 	fi
 }
 
+# Find a search string in a list of strings. Return true if found, else false
 match_str() {
 	local list=("$@")              # First parameter: list of strings
 	local search_str="${list[-1]}" # Last element of the list is the search string
@@ -81,7 +47,7 @@ match_str() {
 	echo "$found"
 }
 
-# return true  version already in use
+# return true if version (search_str) is already in use
 check_for_used_version() {
 	local search_str=$1
 	local result
@@ -109,15 +75,17 @@ get_input_choice() {
 	echo "$rv"
 }
 
-# output to stderr.
+# output to stderr. Used for fucions the echo a result value, to communicate with console.
 stderr_echo() {
 	echo -e "$1" >&2
 }
 
+# standardize outout of TEST_MODE messages
 test_echo() {
 	echo "    -> TEST_MODE - $1 "
 }
 
+# remove first chatacter from input string. Return remaining string.
 remove_first_character() {
 	local input_string="${1}"
 	local substring="${input_string:1}"
@@ -125,18 +93,17 @@ remove_first_character() {
 }
 
 # filter out all lines in given file matching list of keywords
-# TODO this works on a string not a file
 filter_lines() {
 	local keywords=("$@")               # list of keywords
-	local file="${keywords[-1]}"        # file to process
+	local input_lines="${keywords[-1]}" # lines to process
 	local filtered_lines                # return values
-	unset 'keywords[${#keywords[@]}-1]' # Remove the last element (file name)
+	unset 'keywords[${#keywords[@]}-1]' # Remove the last element (input_lines name)
 
 	pattern=$(
 		IFS="|"
 		echo "${keywords[*]}"
 	)
-	filtered_lines=$(awk -v pattern="$pattern" '!($0 ~ pattern)' "$file")
+	filtered_lines=$(awk -v pattern="$pattern" '!($0 ~ pattern)' "$input_lines")
 	echo "$filtered_lines"
 }
 
@@ -160,6 +127,7 @@ combine_commit_lines() {
 	echo "$combined_lines" # Pass the output string back to the calling code
 }
 
+# produce an alternate version of output from 'git log' as given from input_file.
 revise_git_log() {
 	input_file=$1
 	output_file=$2
@@ -196,7 +164,7 @@ show_current_branch() {
 	echo "-> current branch:    $(git branch --show-current)"
 }
 
-# Return true is git has commits
+# Return true is git has previous commits
 git_has_commits() {
 	if [[ "$(git log --oneline 2>/dev/null | wc -l)" -eq 0 ]]; then
 		echo false
@@ -205,6 +173,7 @@ git_has_commits() {
 	fi
 }
 
+# Return the number of git commits
 show_commit_count() {
 	if [[ $(git_has_commits) == true ]]; then
 		count=$(git rev-list HEAD --count)
@@ -214,6 +183,7 @@ show_commit_count() {
 	fi
 }
 
+# create files expected to exist.
 populate_files() {
 	if [[ ! -f GIT_MSG ]]; then
 		echo "-> creating file: GIT_MSG"
@@ -340,8 +310,6 @@ bump_current_version() {
 	local exit_loop
 	local result
 
-	exit_on_quit "$bump_choice" || exit 1
-
 	if [[ $bump_code == 'n' ]]; then
 		new_version="$UNVERSIONED_TEXT"
 	else
@@ -372,7 +340,7 @@ bump_current_version() {
 			stderr_echo "-> Error: can not use this version. exiting"
 			new_version=""
 		else
-			stderr_echo "-> all good!"
+			stderr_echo "-> Valid version bump. All good!"
 		fi
 
 		echo "$new_version"
@@ -406,7 +374,7 @@ create_git_message() {
 # Append marker line to end of GIT_MSG file
 mark_git_msg_file() {
 	local ver=$1 # param $1. version just commited
-	echo "--- Contents above this line were committed in version: $ver ---" >>GIT_MSG
+	echo "*** Contents above this line were committed in version: $ver ***" >>GIT_MSG
 }
 
 confirm_valid_version() {
@@ -432,21 +400,23 @@ confirm_valid_version() {
 
 # Populate the CHANGE_LOG file based on output from "git log"
 # Note: This is done after a commit so this operation creates an 'unstaged' file.
-populate_change_log() {
-	# No return value.
-	# Side effect: writes to CHANGE_LOG file
-	local result
-	local fout
-	fout="$(mktemp)"
-	# git log --pretty=medium >"$fout"
-	git log --abbrev-commit >"$fout"
-	# result=$(filter_lines "Date" "commit" "Author" "$fout")
-	result=$(filter_lines "Date" "Author" "$fout")
-	# remove leading spaces (sed) and collapse multiple blank lines (cat -s)
-	echo "$result" | sed "s/^[ \t]*//" | cat -s >CHANGE_LOG
-}
+# populate_change_log1() {
+# 	# No return value.
+# 	# Side effect: writes to CHANGE_LOG file
+# 	local result
+# 	local fout
+# 	fout="$(mktemp)"
+# 	# git log --pretty=medium >"$fout"
+# 	git log --abbrev-commit >"$fout"
+# 	# result=$(filter_lines "Date" "commit" "Author" "$fout")
+# 	result=$(filter_lines "Date" "Author" "commit" "$fout")
+# 	# remove leading spaces (sed) and collapse multiple blank lines (cat -s)
+# 	echo "$result" | sed "s/^[ \t]*//" | cat -s >CHANGE_LOG
+# }
 
-populate_change_log1() {
+# change_log is an abreviated version of git log
+# Note: This is performed after a commit so this operation creates an 'unstaged' file.
+populate_change_log() {
 	# No params
 	# No return value.
 	# Side effect: writes to CHANGE_LOG file
@@ -456,20 +426,14 @@ populate_change_log1() {
 
 	git log --abbrev-commit >"$log_lines"
 	result_lines=$(filter_lines "Date" "Author" "$log_lines")
-	echo -e "\n===== filter lines ====="
-	echo -e "$result_lines"
-	echo "===== filter lines ====="
-
 	result_lines=$(combine_commit_lines "$result_lines")
 
-	echo -e "\n\n==== combine lines ==="
-	echo -e "$result_lines"
-	echo "========================"
-
 	# remove leading spaces (sed) and collapse multiple blank lines (cat -s)
-	echo "$result_lines" | sed "s/^[ \t]*//" | cat -s >CHANGE_LOG
+	# echo "$result_lines" | sed "s/^[ \t]*//" | cat -s >CHANGE_LOG
+	echo "$result_lines" | cat -s >CHANGE_LOG
 }
 
+# GIT_MSG is specific to each commit. It becomes the message in `git commit -m ""`
 truncate_git_msg_file() {
 	local reply
 	echo
@@ -568,9 +532,9 @@ create_annotated_tag() {
 
 	if [[ $can_proceed == true ]]; then
 		echo -e "\n=> \$ git tag -a -m"
-        local cmd
-        # cmd="git tag -a -m "tagging version "$new_version"" "v"$new_version"""
-        # execute_if_not_true "$TEST_MODE" "Tagging" "$cmd"
+		local cmd
+		# cmd="git tag -a -m "tagging version "$new_version"" "v"$new_version"""
+		# execute_if_not_true "$TEST_MODE" "Tagging" "$cmd"
 		git tag -a -m "tagging version $new_version" "v$new_version" # annotated tag
 		push_annotated_tag
 	fi
@@ -578,10 +542,10 @@ create_annotated_tag() {
 
 main() {
 	if [[ $TEST_MODE == true ]]; then
-		echo "In test mode"
+		echo "** In test mode **"
 	fi
 
-	local cur_ver new_ver
+	local cur_ver new_ver bump_choice
 	populate_files
 
 	# 1. Describe context
@@ -594,6 +558,7 @@ main() {
 
 	# 2. Specify intent
 	bump_choice=$(get_bump_choice)
+	if [[ $bump_choice == "q" ]]; then exit; fi
 	new_ver=$(bump_current_version "$cur_ver" "$bump_choice")
 	if [[ $new_ver == "" ]]; then exit 1; fi
 
@@ -609,4 +574,4 @@ main() {
 }
 
 main
-# populate_change_log1
+# populate_change_log

@@ -1,5 +1,6 @@
--- feat: added addSshKeysToAgent
-   - checks if ssh-agent is running
-   - adds all private keys starting with "id_"
--- style: new read input function - read_yn
--- docs: README.md
+-- style: CHANGE_LOG has new format
+   version and commit lines are combined
+   orginal spacing is preserved
+-- style: prompt_on_confirm() replaced by read_yn()
+-- refactor: ssh agent stuff put into its own source file
+--- Contents above this line were committed in version: 0.2.5 ---

@@ -14,7 +14,7 @@ This is a personal script to to maintain a local and optional remote git reposit
 
 3. After the commit, GIT_MSG is emptied by the user.
 
-4. Before any push to remote, a check is done to see if ssh-agent is running. If it is not, the option is given to run it and add all private keys starting with "id_" as in "id_rsa"
+4. Before any push to remote,  the option is given to run ssh-agent and add all private keys starting with "id_". Example:  "id_rsa"
 
 # Script's Functionality
 
@@ -28,7 +28,7 @@ This file becomes the message content to the '-m' option when executing "$ git c
 
 After a "git commit" another "git tag" is presented as an optional.
 
-Both lightweight and annotated tags are supported.
+Both lightweight and annotated tags are supported, though at the moment, the name version description is used for both.
 
 ## 3. Maintains Version number control
 
@@ -62,7 +62,7 @@ All content above this line should be deleted before the next branch commit.
 
 This file is created and maintained by the script and is changed with every branch commit.
 
-The CHANGES files contains the output from the "git log" command and is filtered by the removal of all lines starting with "author", "date" or "commit".
+The CHANGES files contains the output from the "git log" command and is filtered by the removal of all lines starting with "author", or  "date".
 
 Note: This file is 'up-to-date' on the local system. However, as it is generated after a local commit, it is now an unstaged file and will not be included in the current push to the remote.
 

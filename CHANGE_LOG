@@ -1,136 +1,110 @@
-commit 76d55e3
-
-version: 0.2.3
-
-- feat: line spacing after print title
-
-commit 418c165
-
-version: 0.2.2
-
-- docs: update to README.md
-
-- style: variable name change in 'confirm_valid_version'
-
-- style: renamed 'commit_tag' to 'create_annotated_tag'
-
-commit 755c3d7
-
-version: 0.2.1
-
-- feat: git version now printed
-
-- fix: instead of 'git push origin --tags', using git push origin refs/tags/v"$new_version".
-This is to push a single annotated tag
-
-commit b6cd44c
-
-version: 0.2.0
-
-- docs: updates to README.md
-
-- feat: introduced global NO_COMMIT for testing and debugging
-
-commit 99c5bd6
-
-version: 0.1.13
-
-- style: change name of some globals
-
-- style: removed some comments and dead code
-
-commit f657793
-
-version: 0.1.12
-
-- refactor: moved testing in function main to functions called by main
-
-commit 7d65e8e
-
-version: 0.1.11
-
-doc: update to README.md
-
-feat: post-commit line appended to end of GIT_MSG now more explicit
-
-commit 7c42646
-
-version: 0.1.10
-
-- chore: CHANGES file renamed to CHANGE_LOG
-
-- fix: a bump specifying "no version" is now properly processed
-
-commit 80c1ec1
-
-version: 0.1.9
-
-- refactor: cleaned up a lot of code
-
-- feat: introduced notion of NULL_TAG and NULL_VERSION
-
-commit 321a066
-
-version: 0.1.8
-
-- chore: deleted files: .git_sh and fout (mistakenly committed)
-
-- docs: updated README.md
-
-- fix: Newly created repository was showing an error when showing name of current branch.
-
-- feat: After a commit, GIT_MSG gets a line at the end informing that contents above line have been committed.
-
-- feat: new version triplet is compared against previous used ones to circumvent duplication.
-
-commit 09faead
-
-version: 0.1.7
-
-- deleted files: .git_sh and fout
-
-commit c4a4d43
-
-version: 0.1.6
-
-- docs: README.md has be updated
-
-- refactor: git commit and git tag have been separated into their own procedures
-
-- fix: Corrected get_latest_tag() to handle case of 0 tags
-
-- refactor: different handling for get_bump_choice
-
-commit 8b8053b
-
-- docs: README.md has be updated
-
-- refactor: git commit and git tag have been separated into their own procedures
-
-commit 8e4ab1b
-
-- fix: current_version now has proper default for suggested_version
-
-- feat: get_input_choice()
-
-- fix: get_bump_choice
-
-- feat: handles git commit and git tag
-
-commit 48d540d
-
-Version: 0.1.2
-
-- fix: current_version has proper default for suggested_version
-
-commit a858fac
-
-Version: 0.1.1
-
-- spelling errors in README
-
-commit 892a853
-
-Version: 0.1.0
-
-first commit
+version: 0.2.4           (commit cc27d0d)
+    
+    -- feat: added addSshKeysToAgent
+       - checks if ssh-agent is running
+       - adds all private keys starting with "id_"
+    -- style: new read input function - read_yn
+    -- docs: README.md
+
+version: 0.2.3           (commit 76d55e3)
+    
+    - feat: line spacing after print title
+
+version: 0.2.2           (commit 418c165)
+    
+    - docs: update to README.md
+    
+    - style: variable name change in 'confirm_valid_version'
+    
+    - style: renamed 'commit_tag' to 'create_annotated_tag'
+
+version: 0.2.1           (commit 755c3d7)
+    
+    - feat: git version now printed
+    
+    - fix: instead of 'git push origin --tags', using git push origin refs/tags/v"$new_version".
+      This is to push a single annotated tag
+
+version: 0.2.0           (commit b6cd44c)
+    
+    - docs: updates to README.md
+    
+    - feat: introduced global NO_COMMIT for testing and debugging
+
+version: 0.1.13           (commit 99c5bd6)
+    
+    - style: change name of some globals
+    
+    - style: removed some comments and dead code
+
+version: 0.1.12           (commit f657793)
+    
+    - refactor: moved testing in function main to functions called by main
+
+version: 0.1.11           (commit 7d65e8e)
+    
+    doc: update to README.md
+    
+    feat: post-commit line appended to end of GIT_MSG now more explicit
+
+version: 0.1.10           (commit 7c42646)
+    
+    - chore: CHANGES file renamed to CHANGE_LOG
+    
+    - fix: a bump specifying "no version" is now properly processed
+
+version: 0.1.9           (commit 80c1ec1)
+    
+    - refactor: cleaned up a lot of code
+    
+    - feat: introduced notion of NULL_TAG and NULL_VERSION
+
+version: 0.1.8           (commit 321a066)
+    
+    - chore: deleted files: .git_sh and fout (mistakenly committed)
+    
+    - docs: updated README.md
+    
+    - fix: Newly created repository was showing an error when showing name of current branch.
+    
+    - feat: After a commit, GIT_MSG gets a line at the end informing that contents above line have been committed.
+    
+    - feat: new version triplet is compared against previous used ones to circumvent duplication.
+
+version: 0.1.7           (commit 09faead)
+    
+    - deleted files: .git_sh and fout
+
+version: 0.1.6           (commit c4a4d43)
+    
+    - docs: README.md has be updated
+    
+    - refactor: git commit and git tag have been separated into their own procedures
+    
+    - fix: Corrected get_latest_tag() to handle case of 0 tags
+    
+    - refactor: different handling for get_bump_choice
+
+- docs: README.md has be updated           (commit 8b8053b)
+    
+    - refactor: git commit and git tag have been separated into their own procedures
+
+- fix: current_version now has proper default for suggested_version           (commit 8e4ab1b)
+    
+    - feat: get_input_choice()
+    
+    - fix: get_bump_choice
+    
+    - feat: handles git commit and git tag
+
+Version: 0.1.2           (commit 48d540d)
+    
+    - fix: current_version has proper default for suggested_version
+
+Version: 0.1.1           (commit a858fac)
+    
+    - spelling errors in README
+
+Version: 0.1.0           (commit 892a853)
+    
+    first commit
