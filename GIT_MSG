@@ -1,6 +1,6 @@
 -- style: CHANGE_LOG has new format
    version and commit lines are combined
-   orginal spacing is preserved
+   orginal line-indent spacing is preserved
 -- style: prompt_on_confirm() replaced by read_yn()
 -- refactor: ssh agent stuff put into its own source file
---- Contents above this line were committed in version: 0.2.5 ---
+-- fix: source files are now sourced when program run from any location

@@ -15,8 +15,17 @@ TEST_MODE=false
 NULL_VERSION="0.0.0"
 NULL_TAG="v$NULL_VERSION"
 
-source ./read_yn.sh
-source ./ssh.sh
+
+get_script_dir() {
+	# params: "$0" is from the orginal command line
+	local s_dir
+	s_dir=$(dirname "$(readlink -f "$0")")
+	echo "$s_dir"
+}
+
+install_dir=$(get_script_dir "${0}")
+source "$install_dir/read_yn.sh"
+source "$install_dir/ssh.sh"
 
 # match input_str with pattern. Return true if match else false
 match_pattern() {
